@@ -1,4 +1,4 @@
-# Quasar App (frontend)
+# Quasar App
 
 ## Install the dependencies
 
