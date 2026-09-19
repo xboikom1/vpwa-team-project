@@ -1,1 +1,31 @@
 // app global css
+@use 'bundle';
+@use 'auth';
+
+.q-layout,
+.q-page-container,
+.q-page {
+  background: var(--canvas);
+}
+
+.q-header.rl-hdr {
+  background: var(--surface);
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+.q-drawer {
+  background: var(--surface);
+}
+
+.rl-drawer-host .q-drawer__content {
+  overflow: hidden;
+}
+
+.q-drawer--on-top {
+  box-shadow: var(--shadow-overlay);
+}
+
+.q-drawer__backdrop {
+  background-color: var(--scrim) !important;
+}
