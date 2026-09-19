@@ -1,21 +1,58 @@
 <template>
-  <q-layout view="lHh Lpr lFf">
-    <q-header elevated>
-      <q-toolbar>
-        <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
+  <q-layout view="lHh LpR lFf">
+    <q-header class="rl-hdr">
+      <q-btn
+        v-if="$q.screen.lt.md"
+        class="rl-ico"
+        flat
+        dense
+        aria-label="Channels"
+        @click="leftOpen = !leftOpen"
+      >
+        <AppIcon name="menu" />
+      </q-btn>
 
-        <q-toolbar-title> Quasar App </q-toolbar-title>
+      <span class="rl-hdr__title">No channel</span>
+      <span class="rl-hdr__sep" />
+      <span class="rl-hdr__meta">{{ WORKSPACE_NAME }}</span>
 
-        <div>Quasar v{{ $q.version }}</div>
-      </q-toolbar>
+      <span class="rl-hdr__end" />
     </q-header>
 
-    <q-drawer v-model="leftDrawerOpen" show-if-above bordered>
-      <q-list>
-        <q-item-label header> Essential Links </q-item-label>
+    <q-drawer
+      v-model="leftOpen"
+      show-if-above
+      side="left"
+      bordered
+      :width="$q.screen.lt.md ? 300 : 260"
+      class="rl-drawer-host"
+    >
+      <div class="rl-drawer">
+        <div class="rl-drawer__head">
+          <span class="rl-mark rl-mark--md">
+            <span class="rl-mark__sigil">#</span>
+            <span class="rl-mark__name">{{ WORKSPACE_NAME }}</span>
+          </span>
+        </div>
 
-        <EssentialLink v-for="link in linksList" :key="link.label" v-bind="link" />
-      </q-list>
+        <div class="rl-drawer__body rl-scroll">
+          <div class="rl-sect">Public channels</div>
+          <p class="rl-empty">
+            No public channels yet. Type
+            <span class="rl-code">/join &lt;channelName&gt;</span>.
+          </p>
+
+          <div class="rl-sect">Private channels</div>
+          <p class="rl-empty">
+            No private channels. Type
+            <span class="rl-code">/join &lt;channelName&gt; private</span>.
+          </p>
+        </div>
+
+        <div class="rl-drawer__foot">
+          <UserCard v-if="auth.profile" :profile="auth.profile" :tap="$q.screen.lt.md" />
+        </div>
+      </div>
     </q-drawer>
 
     <q-page-container>
@@ -26,56 +63,13 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import EssentialLink, { type EssentialLinkProps } from '@/components/EssentialLink.vue';
 
-const linksList: EssentialLinkProps[] = [
-  {
-    label: 'Docs',
-    caption: 'quasar.dev',
-    icon: 'school',
-    link: 'https://quasar.dev',
-  },
-  {
-    label: 'GitHub',
-    caption: 'github.com/quasarframework',
-    icon: 'code',
-    link: 'https://github.com/quasarframework',
-  },
-  {
-    label: 'Discord Chat Channel',
-    caption: 'chat.quasar.dev',
-    icon: 'chat',
-    link: 'https://chat.quasar.dev',
-  },
-  {
-    label: 'Forum',
-    caption: 'forum.quasar.dev',
-    icon: 'record_voice_over',
-    link: 'https://forum.quasar.dev',
-  },
-  {
-    label: 'Twitter',
-    caption: '@quasarframework',
-    icon: 'rss_feed',
-    link: 'https://twitter.quasar.dev',
-  },
-  {
-    label: 'Facebook',
-    caption: '@QuasarFramework',
-    icon: 'public',
-    link: 'https://facebook.quasar.dev',
-  },
-  {
-    label: 'Quasar Awesome',
-    caption: 'Community Quasar projects',
-    icon: 'favorite',
-    link: 'https://awesome.quasar.dev',
-  },
-];
+import AppIcon from '@/components/common/AppIcon.vue';
+import UserCard from '@/components/common/UserCard.vue';
+import { WORKSPACE_NAME } from '@/services/mock-auth';
+import { useAuthStore } from '@/stores/auth-store';
 
-const leftDrawerOpen = ref(false);
+const auth = useAuthStore();
 
-function toggleLeftDrawer() {
-  leftDrawerOpen.value = !leftDrawerOpen.value;
-}
+const leftOpen = ref(false);
 </script>
