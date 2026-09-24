@@ -20,7 +20,6 @@
         :maxlength="30"
         :error="error"
         @update:model-value="update"
-        @blur="touched = true"
       />
 
       <div class="rl-field">
@@ -66,11 +65,12 @@
 
 <script setup lang="ts">
 import { useDialogPluginComponent } from 'quasar';
-import { computed, ref, useTemplateRef } from 'vue';
+import { ref, useTemplateRef } from 'vue';
 
 import AppField from '@/components/common/AppField.vue';
 import { useChannelStore } from '@/stores/channel-store';
 import type { ChannelVisibility } from '@/types/types';
+import { validateChannelName } from '@/utils/validation';
 
 defineEmits([...useDialogPluginComponent.emits]);
 
@@ -80,31 +80,21 @@ const channels = useChannelStore();
 
 const name = ref('');
 const visibility = ref<ChannelVisibility>('public');
-const touched = ref(false);
-const submitted = ref(false);
-const conflict = ref('');
+const error = ref('');
 
 const nameFieldRef = useTemplateRef<InstanceType<typeof AppField>>('nameField');
 
-const error = computed(() => {
-  if (conflict.value !== '') return conflict.value;
-  if (!touched.value && !submitted.value) return '';
-  return name.value;
-});
-
 function update(value: string): void {
   name.value = value.trim().toLowerCase();
-  conflict.value = '';
+  error.value = '';
 }
 
 function submit(): void {
-  submitted.value = true;
-  if (error.value !== '') return;
-
-  const failure = channels.create(name.value, visibility.value);
+  const failure = validateChannelName(name.value) ?? channels.create(name.value, visibility.value);
 
   if (failure !== null) {
-    conflict.value = failure;
+    error.value = failure;
+    nameFieldRef.value?.focus();
     return;
   }
 

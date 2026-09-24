@@ -108,6 +108,7 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-overlay);
+  pointer-events: all;
 
   &__title {
     margin: 0;
