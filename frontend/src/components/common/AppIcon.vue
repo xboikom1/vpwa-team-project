@@ -39,7 +39,8 @@ export type IconName =
   | 'menu'
   | 'plus'
   | 'search'
-  | 'users';
+  | 'users'
+  | 'x';
 
 interface Glyph {
   paths: readonly string[];
@@ -79,6 +80,7 @@ const GLYPHS: Record<IconName, Glyph> = {
     ],
     circles: [[9, 7, 4]],
   },
+  x: { paths: ['M18 6 6 18', 'm6 6 12 12'] },
 };
 
 const { name, size = 15 } = defineProps<{
