@@ -13,10 +13,9 @@
           label="Nickname or email"
           name="identifier"
           autocomplete="username"
-          placeholder="johndoe"
+          placeholder="example@gmail.com"
           :error="errors.identifier"
           @update:model-value="update('identifier', $event)"
-          @blur="touched.identifier = true"
         />
 
         <AppField
@@ -27,7 +26,6 @@
           autocomplete="current-password"
           :error="errors.password"
           @update:model-value="update('password', $event)"
-          @blur="touched.password = true"
         />
 
         <button class="rl-btn rl-btn--primary rl-btn--block" type="submit" :disabled="auth.pending">
@@ -64,7 +62,6 @@ const router = useRouter();
 const route = useRoute();
 
 const form = reactive({ identifier: '', password: '' });
-const touched = reactive<Record<Field, boolean>>({ identifier: false, password: false });
 const submitted = ref(false);
 const formError = ref('');
 
@@ -76,7 +73,7 @@ const rules: Record<Field, (value: string) => string | null> = {
 };
 
 function messageFor(field: Field): string {
-  if (!touched[field] && !submitted.value) return '';
+  if (!submitted.value) return '';
   return rules[field](form[field]) ?? '';
 }
 
