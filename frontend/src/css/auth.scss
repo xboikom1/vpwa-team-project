@@ -53,7 +53,7 @@
   &__form {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-2);
   }
 
   &__row {
@@ -117,7 +117,7 @@
 
     &__row {
       flex-direction: column;
-      gap: var(--space-4);
+      gap: var(--space-2);
     }
   }
 }
@@ -192,10 +192,14 @@
       color: var(--text-muted);
     }
 
+    &:focus-visible {
+      outline: 0;
+    }
+
     &:-webkit-autofill,
     &:-webkit-autofill:focus {
       -webkit-text-fill-color: var(--text-primary);
-      -webkit-box-shadow: 0 0 0 100px var(--surface-code) inset;
+      transition: background-color 600000s 0s;
       caret-color: var(--text-primary);
     }
 
@@ -211,6 +215,7 @@
 
   &__msg {
     display: flex;
+    margin: 0;
     align-items: baseline;
     gap: var(--space-1);
     min-height: 16px;

@@ -14,6 +14,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
     children: [
       { path: '', name: 'workspace', component: () => import('@/pages/WorkspacePage.vue') },
+      {
+        path: 'channels/:channelName',
+        name: 'channel',
+        component: () => import('@/pages/ChannelPage.vue'),
+        props: true,
+      },
     ],
   },
 

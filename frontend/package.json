@@ -4,6 +4,9 @@
   "description": "An IRC-style team chat application",
   "productName": "Chatflow",
   "author": "Boiko_Maksym <xboikom1@stuba.sk>",
+  "contributors": [
+    "Kostiantyn Borysiuk <xborysiuk@stuba.sk>"
+  ],
   "type": "module",
   "private": true,
   "scripts": {

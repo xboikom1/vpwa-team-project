@@ -40,7 +40,7 @@
       </button>
     </div>
 
-    <p v-if="error" :id="messageId" class="rl-field__msg is-invalid" role="alert">
+    <p :id="messageId" :class="['rl-field__msg', { 'is-invalid': error }]" role="alert">
       {{ error }}
     </p>
   </div>

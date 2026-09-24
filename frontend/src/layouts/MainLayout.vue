@@ -12,9 +12,7 @@
         <AppIcon name="menu" />
       </q-btn>
 
-      <span class="rl-hdr__title">No channel</span>
-      <span class="rl-hdr__sep" />
-      <span class="rl-hdr__meta">{{ WORKSPACE_NAME }}</span>
+      <ChannelHeader :channel="activeChannel" />
 
       <span class="rl-hdr__end" />
     </q-header>
@@ -35,19 +33,7 @@
           </span>
         </div>
 
-        <div class="rl-drawer__body rl-scroll">
-          <div class="rl-sect">Public channels</div>
-          <p class="rl-empty">
-            No public channels yet. Type
-            <span class="rl-code">/join &lt;channelName&gt;</span>.
-          </p>
-
-          <div class="rl-sect">Private channels</div>
-          <p class="rl-empty">
-            No private channels. Type
-            <span class="rl-code">/join &lt;channelName&gt; private</span>.
-          </p>
-        </div>
+        <ChannelList :active-name="activeName" :tap="$q.screen.lt.md" />
 
         <div class="rl-drawer__foot">
           <UserCard v-if="auth.profile" :profile="auth.profile" :tap="$q.screen.lt.md" />
@@ -62,14 +48,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { useQuasar } from 'quasar';
+import { computed, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 
+import ChannelHeader from '@/components/channels/ChannelHeader.vue';
+import ChannelList from '@/components/channels/ChannelList.vue';
 import AppIcon from '@/components/common/AppIcon.vue';
 import UserCard from '@/components/common/UserCard.vue';
 import { WORKSPACE_NAME } from '@/services/mock-auth';
 import { useAuthStore } from '@/stores/auth-store';
+import { useChannelStore } from '@/stores/channel-store';
 
+const $q = useQuasar();
+const route = useRoute();
 const auth = useAuthStore();
+const channels = useChannelStore();
 
 const leftOpen = ref(false);
+
+const activeName = computed(() => {
+  const param = route.params.channelName;
+  return typeof param === 'string' ? param : '';
+});
+
+const activeChannel = computed(() => channels.findChannel(activeName.value));
+
+watch(activeName, () => {
+  if ($q.screen.lt.md) leftOpen.value = false;
+});
+
+channels.load();
 </script>

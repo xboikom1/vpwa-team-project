@@ -17,7 +17,6 @@
             :maxlength="40"
             :error="errors.firstName"
             @update:model-value="update('firstName', $event)"
-            @blur="touched.firstName = true"
           />
 
           <AppField
@@ -28,7 +27,6 @@
             :maxlength="40"
             :error="errors.lastName"
             @update:model-value="update('lastName', $event)"
-            @blur="touched.lastName = true"
           />
         </div>
 
@@ -40,11 +38,10 @@
           autocomplete="username"
           sigil="@"
           mono
-          placeholder="johndoe"
+          placeholder="nickname"
           :maxlength="20"
           :error="errors.nickName"
           @update:model-value="(nickName) => update('nickName', nickName.trim())"
-          @blur="touched.nickName = true"
         />
 
         <AppField
@@ -53,22 +50,19 @@
           name="email"
           type="email"
           autocomplete="email"
-          placeholder="johndoe@northwind.team"
+          placeholder="example@gmail.com"
           :error="errors.email"
           @update:model-value="update('email', $event)"
-          @blur="touched.email = true"
         />
 
         <AppField
           :model-value="form.password"
           label="Password"
-          hint="8 characters or more"
           name="password"
           type="password"
           autocomplete="new-password"
           :error="errors.password"
           @update:model-value="update('password', $event)"
-          @blur="touched.password = true"
         />
 
         <button class="rl-btn rl-btn--primary rl-btn--block" type="submit" :disabled="auth.pending">
@@ -117,14 +111,6 @@ const form = reactive<Record<Field, string>>({
   password: '',
 });
 
-const touched = reactive<Record<Field, boolean>>({
-  firstName: false,
-  lastName: false,
-  nickName: false,
-  email: false,
-  password: false,
-});
-
 const submitted = ref(false);
 const formError = ref('');
 
@@ -143,7 +129,7 @@ const rules: Record<Field, (value: string) => string | null> = {
 function messageFor(field: Field): string {
   const conflict = taken[field];
   if (conflict !== undefined) return conflict;
-  if (!touched[field] && !submitted.value) return '';
+  if (!submitted.value) return '';
   return rules[field](form[field]) ?? '';
 }
 

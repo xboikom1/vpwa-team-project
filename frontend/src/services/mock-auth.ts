@@ -1,3 +1,4 @@
+import { clearMemoryFallback, readJson, removeKey, writeJson } from '@/services/storage';
 import type { AuthResult, LoginInput, RegisterInput, UserProfile } from '@/types/types';
 
 const ACCOUNTS_KEY = 'chatflow.accounts.v3';
@@ -27,50 +28,6 @@ const SEED_ROSTER: readonly (readonly [nick: string, first: string, last: string
   ['viktor', 'Viktor', 'Šimko'],
   ['jana', 'Jana', 'Kovaľová'],
 ];
-
-const memoryFallback = new Map<string, string>();
-let storageChecked = false;
-let storageWorks = false;
-
-function storage(): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> {
-  if (!storageChecked) {
-    storageChecked = true;
-
-    try {
-      const probe = '__chatflow_probe__';
-      window.localStorage.setItem(probe, '1');
-      window.localStorage.removeItem(probe);
-      storageWorks = true;
-    } catch {
-      storageWorks = false;
-    }
-  }
-
-  if (storageWorks) return window.localStorage;
-
-  return {
-    getItem: (key) => memoryFallback.get(key) ?? null,
-    setItem: (key, value) => void memoryFallback.set(key, value),
-    removeItem: (key) => void memoryFallback.delete(key),
-  };
-}
-
-function readJson<T>(key: string): T | null {
-  try {
-    const raw = storage().getItem(key);
-    return raw === null ? null : (JSON.parse(raw) as T);
-  } catch {
-    return null;
-  }
-}
-
-function writeJson(key: string, value: unknown): void {
-  try {
-    storage().setItem(key, JSON.stringify(value));
-  } catch {
-    return;
-  }
-}
 
 function seedAccounts(): StoredAccount[] {
   return SEED_ROSTER.map(([nick, first, last]) => ({
@@ -113,11 +70,7 @@ export function saveSession(profile: UserProfile): void {
 }
 
 export function clearSession(): void {
-  try {
-    storage().removeItem(SESSION_KEY);
-  } catch {
-    return;
-  }
+  removeKey(SESSION_KEY);
 }
 
 export function register(input: RegisterInput): AuthResult {
@@ -171,11 +124,7 @@ export function login(input: LoginInput): AuthResult {
 }
 
 export function resetRegistry(): void {
-  memoryFallback.clear();
-  try {
-    storage().removeItem(ACCOUNTS_KEY);
-    storage().removeItem(SESSION_KEY);
-  } catch {
-    return;
-  }
+  clearMemoryFallback();
+  removeKey(ACCOUNTS_KEY);
+  removeKey(SESSION_KEY);
 }

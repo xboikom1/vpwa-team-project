@@ -1,6 +1,7 @@
 // app global css
 @use 'bundle';
 @use 'auth';
+@use 'channels';
 
 .q-layout,
 .q-page-container,
@@ -26,6 +27,7 @@
   box-shadow: var(--shadow-overlay);
 }
 
-.q-drawer__backdrop {
+.q-drawer__backdrop,
+.q-dialog__backdrop {
   background-color: var(--scrim) !important;
 }

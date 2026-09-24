@@ -1,0 +1,134 @@
+.rl-sect__count {
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.rl-ch {
+  &__link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 100%;
+    color: inherit;
+    text-decoration: none;
+    outline-offset: -2px;
+  }
+
+  &:focus-within {
+    color: var(--text-primary);
+  }
+  &:focus-within &__actions {
+    display: flex;
+  }
+  &:focus-within &__end > .rl-badge {
+    display: none;
+  }
+
+  &--tap {
+    height: 40px;
+  }
+  &--tap &__actions {
+    display: flex;
+  }
+  &--tap:hover &__end > .rl-badge,
+  &--tap:focus-within &__end > .rl-badge {
+    display: inline-flex;
+  }
+}
+
+.rl-invites {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.rl-invite {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.32);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+
+  &__top {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+
+    .rl-ch__sigil {
+      color: var(--accent);
+    }
+  }
+
+  &__sub {
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 400;
+    color: var(--text-muted);
+  }
+
+  &__by {
+    font-family: var(--font-mono);
+    color: var(--mono-accent);
+  }
+
+  &__actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-1);
+  }
+}
+
+.rl-btn--sm {
+  height: 26px;
+  padding: 0 var(--space-3);
+  font-size: 12px;
+}
+
+.rl-channels__new {
+  margin-top: var(--space-5);
+}
+
+.rl-dialog {
+  width: 400px;
+  max-width: calc(100vw - 32px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-overlay);
+  pointer-events: all;
+
+  &__title {
+    margin: 0;
+    font-size: 17px;
+    line-height: 24px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+  }
+
+  &__text {
+    margin: var(--space-1) 0 0;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--text-muted);
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+  }
+}

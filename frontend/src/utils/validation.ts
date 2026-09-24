@@ -26,3 +26,10 @@ export function validateIdentifier(value: string): string | null {
   if (value.trim().length === 0) return 'Enter your nickname or email.';
   return null;
 }
+
+export function validateChannelName(value: string): string | null {
+  if (value.length === 0) return 'Channel name is required.';
+  if (value.length > 30) return 'Channel name cannot exceed 30 characters.';
+  if (!/^[a-z0-9_-]+$/.test(value)) return 'Use only a-z, 0-9, - and _.';
+  return null;
+}
