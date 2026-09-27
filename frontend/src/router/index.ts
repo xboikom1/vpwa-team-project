@@ -28,7 +28,6 @@ export default defineRouter(({ store }) => {
 
   Router.beforeEach((to) => {
     const auth = useAuthStore(store);
-    auth.restore();
 
     if (to.meta.requiresAuth === true && !auth.isAuthenticated) {
       return { name: 'login', query: { redirect: to.fullPath } };
