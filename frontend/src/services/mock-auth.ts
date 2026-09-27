@@ -1,8 +1,4 @@
-import { clearMemoryFallback, readJson, removeKey, writeJson } from '@/services/storage';
 import type { AuthResult, LoginInput, RegisterInput, UserProfile } from '@/types/types';
-
-const ACCOUNTS_KEY = 'chatflow.accounts.v3';
-const SESSION_KEY = 'chatflow.session.v1';
 
 interface StoredAccount extends UserProfile {
   digest: string;
@@ -39,14 +35,7 @@ function seedAccounts(): StoredAccount[] {
   }));
 }
 
-function loadAccounts(): StoredAccount[] {
-  const stored = readJson<StoredAccount[]>(ACCOUNTS_KEY);
-  if (Array.isArray(stored) && stored.length > 0) return stored;
-
-  const seeded = seedAccounts();
-  writeJson(ACCOUNTS_KEY, seeded);
-  return seeded;
-}
+let accounts = seedAccounts();
 
 function toProfile(account: StoredAccount): UserProfile {
   return {
@@ -57,25 +46,8 @@ function toProfile(account: StoredAccount): UserProfile {
   };
 }
 
-export function loadSession(): UserProfile | null {
-  const stored = readJson<UserProfile>(SESSION_KEY);
-  if (stored === null || typeof stored.nickName !== 'string') return null;
-
-  const account = loadAccounts().find((item) => item.nickName === stored.nickName);
-  return account === undefined ? null : toProfile(account);
-}
-
-export function saveSession(profile: UserProfile): void {
-  writeJson(SESSION_KEY, profile);
-}
-
-export function clearSession(): void {
-  removeKey(SESSION_KEY);
-}
-
 export function register(input: RegisterInput): AuthResult {
   const email = input.email.trim().toLowerCase();
-  const accounts = loadAccounts();
 
   if (accounts.some((item) => item.nickName === input.nickName)) {
     return {
@@ -99,7 +71,7 @@ export function register(input: RegisterInput): AuthResult {
     digest: `${input.nickName}::${input.password}::chatflow`,
   };
 
-  writeJson(ACCOUNTS_KEY, [...accounts, account]);
+  accounts = [...accounts, account];
   return { ok: true, profile: toProfile(account) };
 }
 
@@ -108,7 +80,7 @@ export function login(input: LoginInput): AuthResult {
   const nickName = raw.startsWith('@') ? raw.slice(1) : raw;
   const email = raw.toLowerCase();
 
-  const account = loadAccounts().find(
+  const account = accounts.find(
     (item) => item.nickName === nickName || item.email.toLowerCase() === email,
   );
 
@@ -121,10 +93,4 @@ export function login(input: LoginInput): AuthResult {
   if (account.digest !== `${account.nickName}::${input.password}::chatflow`) return rejection;
 
   return { ok: true, profile: toProfile(account) };
-}
-
-export function resetRegistry(): void {
-  clearMemoryFallback();
-  removeKey(ACCOUNTS_KEY);
-  removeKey(SESSION_KEY);
 }
