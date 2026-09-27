@@ -37,8 +37,6 @@
     "vue-tsc": "^3.3.3",
     "@types/node": "^22.19.11",
     "@quasar/app-vite": "^3.8.4",
-    "autoprefixer": "^10.4.27",
-    "postcss": "^8.5.8",
     "typescript": "^6.0.0"
   },
   "keywords": [

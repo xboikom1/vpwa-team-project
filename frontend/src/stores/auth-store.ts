@@ -17,7 +17,6 @@ export const useAuthStore = defineStore('auth', () => {
   const notificationFilter = ref<NotificationFilter>('all');
 
   const pending = ref(false);
-  const restored = ref(false);
 
   const isAuthenticated = computed(() => profile.value !== null);
 
@@ -31,12 +30,6 @@ export const useAuthStore = defineStore('auth', () => {
     profile.value === null ? '' : profile.value.nickName.slice(0, 1).toUpperCase(),
   );
 
-  function restore(): void {
-    if (restored.value) return;
-    profile.value = mockAuth.loadSession();
-    restored.value = true;
-  }
-
   function register(input: RegisterInput): AuthFailure | null {
     pending.value = true;
     try {
@@ -45,7 +38,6 @@ export const useAuthStore = defineStore('auth', () => {
 
       profile.value = result.profile;
       presence.value = 'online';
-      mockAuth.saveSession(result.profile);
       return null;
     } finally {
       pending.value = false;
@@ -60,7 +52,6 @@ export const useAuthStore = defineStore('auth', () => {
 
       profile.value = result.profile;
       presence.value = 'online';
-      mockAuth.saveSession(result.profile);
       return null;
     } finally {
       pending.value = false;
@@ -68,7 +59,6 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout(): void {
-    mockAuth.clearSession();
     profile.value = null;
     presence.value = 'online';
     notificationFilter.value = 'all';
@@ -87,12 +77,10 @@ export const useAuthStore = defineStore('auth', () => {
     presence,
     notificationFilter,
     pending,
-    restored,
     isAuthenticated,
     handle,
     displayName,
     initials,
-    restore,
     register,
     login,
     logout,
