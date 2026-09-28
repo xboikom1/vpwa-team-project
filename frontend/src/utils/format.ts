@@ -8,3 +8,8 @@ export function formatTimeAgo(iso: string): string {
 
   return `${Math.floor(hours / 24)}d ago`;
 }
+
+export function isMentioned(text: string, nickName: string): boolean {
+  const mentions: string[] = text.match(/@[\w-]+/g) ?? [];
+  return mentions.includes(`@${nickName}`);
+}
