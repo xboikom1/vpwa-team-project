@@ -88,6 +88,7 @@ export default defineConfig((/* ctx */) => {
     framework: {
       config: {
         dark: true,
+        notify: { position: 'top', timeout: 3000 },
       },
 
       // iconSet: 'material-icons', // Quasar icon set
@@ -101,7 +102,7 @@ export default defineConfig((/* ctx */) => {
       // directives: [],
 
       // Quasar plugins
-      plugins: ['Dialog'],
+      plugins: ['Dialog', 'Notify'],
     },
 
     // animations: 'all', // --- includes all animations
