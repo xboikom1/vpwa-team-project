@@ -46,6 +46,10 @@ function toProfile(account: StoredAccount): UserProfile {
   };
 }
 
+export function hasAccount(nickName: string): boolean {
+  return accounts.some((item) => item.nickName === nickName);
+}
+
 export function register(input: RegisterInput): AuthResult {
   const email = input.email.trim().toLowerCase();
 
