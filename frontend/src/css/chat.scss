@@ -1,0 +1,82 @@
+.q-footer.rl-footer {
+    background: var(--surface);
+    color: var(--text-primary);
+    border-top: 1px solid var(--border);
+}
+
+.rl-cmd {
+    padding: var(--space-2) var(--space-4) var(--space-3);
+
+    .q-field--outlined .q-field__control {
+        border-radius: var(--radius-lg);
+        background: var(--canvas);
+
+        &::before {
+            border-color: var(--border-strong);
+        }
+    }
+
+    .q-field__prepend {
+        color: var(--text-muted);
+    }
+}
+
+.rl-chat {
+    display: flex;
+    flex-direction: column;
+}
+
+.rl-msgs {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: var(--space-4) var(--space-4) var(--space-2);
+
+    .q-message-container > div {
+        max-width: 80%;
+    }
+    .q-message-name {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    .q-message-text:last-child {
+        min-height: 0;
+    }
+
+    .q-message .q-message-text-content {
+        color: var(--text-primary);
+        font-size: 14px;
+        line-height: 20px;
+    }
+
+    .q-message-received .q-message-text {
+        color: var(--surface-raised);
+    }
+
+    .q-message-sent .q-message-text {
+        color: var(--accent-soft);
+    }
+
+    .q-message.rl-msg--mention .q-message-text {
+        color: var(--mention-bg);
+        box-shadow: inset 0 0 0 1px var(--mention-rule);
+    }
+
+    .rl-msg--mention .q-message-name {
+        color: var(--mention-text);
+    }
+}
+
+.rl-members {
+    .q-item__section--avatar {
+        min-width: 0;
+    }
+
+    &__nick {
+        font-family: var(--font-mono);
+        font-size: 13px;
+    }
+}
