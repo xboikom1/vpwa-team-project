@@ -1,9 +1,6 @@
 <template>
-  <q-page class="rl-empty rl-empty--pane">
-    <template v-if="channel">
-      <p class="rl-empty__title">#{{ channel.name }}</p>
-      <p class="rl-empty__body">No messages in #{{ channel.name }} yet.</p>
-    </template>
+  <q-page :class="channel ? 'rl-chat' : 'rl-empty rl-empty--pane'">
+    <MessageList v-if="channel" :channel-name="channel.name" />
 
     <template v-else>
       <p class="rl-empty__title">You are not in #{{ channelName }}</p>
@@ -18,6 +15,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+import MessageList from '@/components/chat/MessageList.vue';
 import { useChannelStore } from '@/stores/channel-store';
 
 const { channelName } = defineProps<{
