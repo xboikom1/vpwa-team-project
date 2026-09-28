@@ -59,3 +59,32 @@ export interface JoinedChannel extends Channel {
 export interface PendingInvitation extends Invitation {
   visibility: ChannelVisibility;
 }
+
+export interface ChannelBan {
+  channelName: string;
+  nickName: string;
+}
+
+export interface KickVote {
+  channelName: string;
+  target: string;
+  voter: string;
+}
+
+export type KickResult =
+  { ok: true; votes: number; banned: boolean } | { ok: false; error: string };
+
+export interface Message {
+  id: number;
+  channelName: string;
+  author: string;
+  text: string;
+  createdAt: string;
+}
+
+export type CommandInput =
+  | { kind: 'message'; text: string }
+  | { kind: 'join'; channelName: string; visibility: ChannelVisibility }
+  | { kind: 'invite' | 'revoke' | 'kick'; nickName: string }
+  | { kind: 'quit' | 'cancel' | 'list' }
+  | { kind: 'error'; message: string };
