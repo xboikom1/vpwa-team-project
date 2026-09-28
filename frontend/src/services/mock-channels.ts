@@ -1,19 +1,29 @@
+import { hasAccount } from '@/services/mock-auth';
 import type {
   Channel,
+  ChannelBan,
   ChannelMember,
   ChannelVisibility,
   Invitation,
   JoinedChannel,
+  KickResult,
+  KickVote,
+  Message,
   PendingInvitation,
 } from '@/types/types';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const INACTIVE_DAYS = 30;
 
+export const KICK_VOTES_TO_BAN = 3;
+
 interface ChannelDb {
   channels: Channel[];
   members: ChannelMember[];
   invitations: Invitation[];
+  bans: ChannelBan[];
+  kickVotes: KickVote[];
+  messages: Message[];
 }
 
 interface SeedChannel {
@@ -22,6 +32,13 @@ interface SeedChannel {
   admin: string;
   members: readonly string[];
   idleDays: number;
+}
+
+interface SeedMessage {
+  channelName: string;
+  author: string;
+  text: string;
+  minutesAgo: number;
 }
 
 const EVERYONE = [
@@ -101,12 +118,65 @@ const SEED_CHANNELS: readonly SeedChannel[] = [
   },
 ];
 
+const SEED_MESSAGES: readonly SeedMessage[] = [
+  {
+    channelName: 'general',
+    author: 'alex',
+    text: 'Morning! Standup moves to 10:30 today.',
+    minutesAgo: 95,
+  },
+  {
+    channelName: 'general',
+    author: 'maya',
+    text: 'Thanks for the heads-up, @alex.',
+    minutesAgo: 90,
+  },
+  {
+    channelName: 'general',
+    author: 'viktor',
+    text: 'FREE crypto giveaway!!! DM me your wallet.',
+    minutesAgo: 40,
+  },
+  {
+    channelName: 'general',
+    author: 'priya',
+    text: '@johndoe can you check the deploy checklist before lunch?',
+    minutesAgo: 25,
+  },
+  {
+    channelName: 'engineering',
+    author: 'ed',
+    text: 'CI is green again after the cache fix.',
+    minutesAgo: 30,
+  },
+  {
+    channelName: 'engineering',
+    author: 'marek',
+    text: 'The migration PR is ready for review, @johndoe.',
+    minutesAgo: 8,
+  },
+];
+
+const SEED_KICK_VOTES: readonly KickVote[] = [
+  { channelName: 'general', target: 'viktor', voter: 'kai' },
+  { channelName: 'general', target: 'viktor', voter: 'rosa' },
+];
+
+let lastMessageId = 0;
+
 function ago(ms: number): string {
   return new Date(Date.now() - ms).toISOString();
 }
 
 function seedDb(): ChannelDb {
-  const db: ChannelDb = { channels: [], members: [], invitations: [] };
+  const db: ChannelDb = {
+    channels: [],
+    members: [],
+    invitations: [],
+    bans: [],
+    kickVotes: SEED_KICK_VOTES.map((vote) => ({ ...vote })),
+    messages: [],
+  };
 
   const createdAt = ago(60 * DAY_MS);
 
@@ -142,6 +212,17 @@ function seedDb(): ChannelDb {
     createdAt: ago(2 * 60 * 60 * 1000),
   });
 
+  for (const seed of SEED_MESSAGES) {
+    lastMessageId += 1;
+    db.messages.push({
+      id: lastMessageId,
+      channelName: seed.channelName,
+      author: seed.author,
+      text: seed.text,
+      createdAt: ago(seed.minutesAgo * 60 * 1000),
+    });
+  }
+
   return db;
 }
 
@@ -149,6 +230,9 @@ function deleteChannelData(db: ChannelDb, channelName: string): void {
   db.channels = db.channels.filter((channel) => channel.name !== channelName);
   db.members = db.members.filter((member) => member.channelName !== channelName);
   db.invitations = db.invitations.filter((invitation) => invitation.channelName !== channelName);
+  db.bans = db.bans.filter((ban) => ban.channelName !== channelName);
+  db.kickVotes = db.kickVotes.filter((vote) => vote.channelName !== channelName);
+  db.messages = db.messages.filter((message) => message.channelName !== channelName);
 }
 
 function isInactive(channel: Channel): boolean {
@@ -165,6 +249,10 @@ function loadDb(): ChannelDb {
   return memoryDb;
 }
 
+function findChannel(db: ChannelDb, channelName: string): Channel | undefined {
+  return db.channels.find((channel) => channel.name === channelName);
+}
+
 function findMember(
   db: ChannelDb,
   nickName: string,
@@ -173,6 +261,37 @@ function findMember(
   return db.members.find(
     (member) => member.nickName === nickName && member.channelName === channelName,
   );
+}
+
+function findInvitation(
+  db: ChannelDb,
+  nickName: string,
+  channelName: string,
+): Invitation | undefined {
+  return db.invitations.find(
+    (invitation) => invitation.nickName === nickName && invitation.channelName === channelName,
+  );
+}
+
+function removeInvitation(db: ChannelDb, nickName: string, channelName: string): void {
+  db.invitations = db.invitations.filter(
+    (invitation) => !(invitation.nickName === nickName && invitation.channelName === channelName),
+  );
+}
+
+function isBanned(db: ChannelDb, nickName: string, channelName: string): boolean {
+  return db.bans.some((ban) => ban.nickName === nickName && ban.channelName === channelName);
+}
+
+function banMember(db: ChannelDb, nickName: string, channelName: string): void {
+  db.members = db.members.filter(
+    (member) => !(member.nickName === nickName && member.channelName === channelName),
+  );
+  db.kickVotes = db.kickVotes.filter(
+    (vote) => !(vote.target === nickName && vote.channelName === channelName),
+  );
+  removeInvitation(db, nickName, channelName);
+  db.bans.push({ channelName, nickName });
 }
 
 export function listChannels(nickName: string): JoinedChannel[] {
@@ -199,6 +318,19 @@ export function listInvitations(nickName: string): PendingInvitation[] {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+export function listMembers(nickName: string, channelName: string): ChannelMember[] {
+  const db = loadDb();
+  if (findMember(db, nickName, channelName) === undefined) return [];
+
+  return db.members
+    .filter((member) => member.channelName === channelName)
+    .map((member) => ({ ...member }))
+    .sort((a, b) => {
+      if (a.role !== b.role) return a.role === 'admin' ? -1 : 1;
+      return a.nickName.localeCompare(b.nickName);
+    });
+}
+
 export function createChannel(
   nickName: string,
   channelName: string,
@@ -214,6 +346,28 @@ export function createChannel(
   db.channels.push({ name: channelName, visibility, createdAt: now, lastActivityAt: now });
   db.members.push({ channelName, nickName, role: 'admin', joinedAt: now });
 
+  return null;
+}
+
+export function joinChannel(
+  nickName: string,
+  channelName: string,
+  visibility: ChannelVisibility,
+): string | null {
+  const db = loadDb();
+  const channel = findChannel(db, channelName);
+
+  if (channel === undefined) return createChannel(nickName, channelName, visibility);
+  if (findMember(db, nickName, channelName) !== undefined) return null;
+  if (isBanned(db, nickName, channelName)) return `You are banned from #${channelName}.`;
+  if (findInvitation(db, nickName, channelName) !== undefined) {
+    return acceptInvitation(nickName, channelName);
+  }
+  if (channel.visibility === 'private') {
+    return `#${channelName} is private. Ask its admin for an invite.`;
+  }
+
+  db.members.push({ channelName, nickName, role: 'member', joinedAt: new Date().toISOString() });
   return null;
 }
 
@@ -239,15 +393,125 @@ export function leaveChannel(nickName: string, channelName: string): string | nu
   return null;
 }
 
-export function acceptInvitation(nickName: string, channelName: string): string | null {
+export function inviteMember(nickName: string, channelName: string, target: string): string | null {
   const db = loadDb();
-  const invitation = db.invitations.find(
-    (item) => item.nickName === nickName && item.channelName === channelName,
+  const channel = findChannel(db, channelName);
+  const member = findMember(db, nickName, channelName);
+
+  if (channel === undefined || member === undefined) {
+    return `You are not a member of #${channelName}.`;
+  }
+  if (channel.visibility === 'private' && member.role !== 'admin') {
+    return `Only the admin can invite people to #${channelName}.`;
+  }
+  if (!hasAccount(target)) return `There is no user @${target}.`;
+  if (findMember(db, target, channelName) !== undefined) {
+    return `@${target} is already in #${channelName}.`;
+  }
+  if (findInvitation(db, target, channelName) !== undefined) {
+    return `@${target} is already invited to #${channelName}.`;
+  }
+
+  if (isBanned(db, target, channelName)) {
+    if (member.role !== 'admin') {
+      return `@${target} is banned from #${channelName}. Only the admin can let them back in.`;
+    }
+
+    db.bans = db.bans.filter(
+      (ban) => !(ban.nickName === target && ban.channelName === channelName),
+    );
+  }
+
+  db.invitations.push({
+    channelName,
+    nickName: target,
+    invitedBy: nickName,
+    createdAt: new Date().toISOString(),
+  });
+
+  return null;
+}
+
+export function revokeMember(nickName: string, channelName: string, target: string): string | null {
+  const db = loadDb();
+  const channel = findChannel(db, channelName);
+  const member = findMember(db, nickName, channelName);
+
+  if (channel === undefined || member === undefined) {
+    return `You are not a member of #${channelName}.`;
+  }
+  if (channel.visibility !== 'private') {
+    return `/revoke only works in private channels. Use /kick in #${channelName}.`;
+  }
+  if (member.role !== 'admin') return `Only the admin can remove people from #${channelName}.`;
+  if (target === nickName) return `You are the admin. Use /quit to close #${channelName}.`;
+
+  const targetMember = findMember(db, target, channelName);
+  if (targetMember === undefined && findInvitation(db, target, channelName) === undefined) {
+    return `@${target} is not in #${channelName}.`;
+  }
+
+  db.members = db.members.filter((item) => item !== targetMember);
+  removeInvitation(db, target, channelName);
+  return null;
+}
+
+export function kickMember(nickName: string, channelName: string, target: string): KickResult {
+  const db = loadDb();
+  const channel = findChannel(db, channelName);
+  const member = findMember(db, nickName, channelName);
+
+  if (channel === undefined || member === undefined) {
+    return { ok: false, error: `You are not a member of #${channelName}.` };
+  }
+  if (target === nickName) {
+    return { ok: false, error: 'You cannot kick yourself. Use /cancel to leave.' };
+  }
+
+  const targetMember = findMember(db, target, channelName);
+  if (targetMember === undefined) {
+    return { ok: false, error: `@${target} is not in #${channelName}.` };
+  }
+  if (targetMember.role === 'admin') {
+    return { ok: false, error: `@${target} is the admin of #${channelName} and cannot be kicked.` };
+  }
+
+  if (member.role === 'admin') {
+    banMember(db, target, channelName);
+    return { ok: true, votes: KICK_VOTES_TO_BAN, banned: true };
+  }
+
+  if (channel.visibility === 'private') {
+    return { ok: false, error: `Only the admin can remove people from #${channelName}.` };
+  }
+
+  const votes = db.kickVotes.filter(
+    (vote) => vote.channelName === channelName && vote.target === target,
   );
 
-  if (invitation === undefined) return `The invitation to #${channelName} is no longer valid.`;
+  if (votes.some((vote) => vote.voter === nickName)) {
+    return {
+      ok: false,
+      error: `You already voted to kick @${target} (${votes.length}/${KICK_VOTES_TO_BAN}).`,
+    };
+  }
 
-  db.invitations = db.invitations.filter((item) => item !== invitation);
+  db.kickVotes.push({ channelName, target, voter: nickName });
+
+  const count = votes.length + 1;
+  if (count >= KICK_VOTES_TO_BAN) banMember(db, target, channelName);
+
+  return { ok: true, votes: count, banned: count >= KICK_VOTES_TO_BAN };
+}
+
+export function acceptInvitation(nickName: string, channelName: string): string | null {
+  const db = loadDb();
+
+  if (findInvitation(db, nickName, channelName) === undefined) {
+    return `The invitation to #${channelName} is no longer valid.`;
+  }
+
+  removeInvitation(db, nickName, channelName);
   db.members.push({ channelName, nickName, role: 'member', joinedAt: new Date().toISOString() });
 
   return null;
@@ -255,11 +519,37 @@ export function acceptInvitation(nickName: string, channelName: string): string 
 
 export function declineInvitation(nickName: string, channelName: string): string | null {
   const db = loadDb();
+  removeInvitation(db, nickName, channelName);
 
-  db.invitations = db.invitations.filter(
-    (item) => !(item.nickName === nickName && item.channelName === channelName),
-  );
+  return null;
+}
 
+export function listMessages(nickName: string, channelName: string): Message[] {
+  const db = loadDb();
+  if (findMember(db, nickName, channelName) === undefined) return [];
+
+  return db.messages
+    .filter((message) => message.channelName === channelName)
+    .map((message) => ({ ...message }));
+}
+
+export function postMessage(nickName: string, channelName: string, text: string): string | null {
+  const db = loadDb();
+
+  if (findMember(db, nickName, channelName) === undefined) {
+    return `Join #${channelName} before sending messages.`;
+  }
+
+  lastMessageId += 1;
+  db.messages.push({
+    id: lastMessageId,
+    channelName,
+    author: nickName,
+    text,
+    createdAt: new Date().toISOString(),
+  });
+
+  markActivity(channelName);
   return null;
 }
 
