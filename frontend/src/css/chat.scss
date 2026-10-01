@@ -37,6 +37,117 @@
   }
 }
 
+.rl-typing {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: var(--space-1) var(--space-4) 0;
+  color: var(--text-muted);
+  font-size: 12px;
+
+  &__user {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--mono-accent);
+    font-family: var(--font-mono);
+    font-size: inherit;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  &__dots {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin-right: 2px;
+
+    i {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      animation: rl-typing-dot 1.2s infinite ease-in-out;
+
+      &:nth-child(2) {
+        animation-delay: 0.15s;
+      }
+
+      &:nth-child(3) {
+        animation-delay: 0.3s;
+      }
+    }
+  }
+}
+
+.rl-typing-preview {
+  width: min(520px, calc(100vw - 32px));
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-overlay);
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-weight: 600;
+  }
+
+  &__body {
+    min-height: 96px;
+    line-height: 22px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  &__empty,
+  &__note {
+    color: var(--text-muted);
+  }
+
+  &__note {
+    padding-top: 0;
+    font-size: 11px;
+  }
+
+  &__caret {
+    display: inline-block;
+    width: 1px;
+    height: 16px;
+    margin-left: 2px;
+    vertical-align: -2px;
+    background: var(--accent);
+    animation: rl-typing-caret 0.8s steps(1) infinite;
+  }
+}
+
+@keyframes rl-typing-dot {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+@keyframes rl-typing-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
 .rl-chat {
   display: flex;
   flex-direction: column;
@@ -95,6 +206,11 @@
 .rl-members {
   .q-item__section--avatar {
     min-width: 0;
+  }
+
+  .rl-av {
+    width: 28px;
+    height: 28px;
   }
 
   &__nick {
