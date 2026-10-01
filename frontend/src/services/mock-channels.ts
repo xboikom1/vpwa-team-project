@@ -162,6 +162,16 @@ const SEED_KICK_VOTES: readonly KickVote[] = [
   { channelName: 'general', target: 'viktor', voter: 'rosa' },
 ];
 
+const HISTORY_AUTHORS = ['alex', 'maya', 'ed', 'priya', 'kai', 'lucia'] as const;
+const HISTORY_TEXTS = [
+  'Sharing a quick update from today.',
+  'I reviewed the latest changes and everything looks good.',
+  'Can someone take a look when they have a moment?',
+  'The next release candidate is ready for testing.',
+  'I added the notes from our last discussion.',
+  'Thanks, I will follow up on this tomorrow.',
+] as const;
+
 let lastMessageId = 0;
 
 function ago(ms: number): string {
@@ -211,6 +221,21 @@ function seedDb(): ChannelDb {
     invitedBy: 'johndoe',
     createdAt: ago(2 * 60 * 60 * 1000),
   });
+
+  for (let index = 0; index < 75; index += 1) {
+    const author = HISTORY_AUTHORS[index % HISTORY_AUTHORS.length] ?? 'alex';
+    const text = HISTORY_TEXTS[index % HISTORY_TEXTS.length] ?? 'General channel update.';
+    const minutesAgo = (75 - index) * 10 + 100;
+
+    lastMessageId += 1;
+    db.messages.push({
+      id: lastMessageId,
+      channelName: 'general',
+      author,
+      text: `${text} (${index + 1})`,
+      createdAt: ago(minutesAgo * 60 * 1000),
+    });
+  }
 
   for (const seed of SEED_MESSAGES) {
     lastMessageId += 1;
@@ -401,15 +426,18 @@ export function inviteMember(nickName: string, channelName: string, target: stri
   if (channel === undefined || member === undefined) {
     return `You are not a member of #${channelName}.`;
   }
+
   if (channel.visibility === 'private' && member.role !== 'admin') {
-    return `Only the admin can invite people to #${channelName}.`;
+    return `Only the admin can invite people to private channels.`;
   }
+
   if (!hasAccount(target)) return `There is no user @${target}.`;
+
   if (findMember(db, target, channelName) !== undefined) {
-    return `@${target} is already in #${channelName}.`;
+    return `@${target} is already in the channel #${channelName}.`;
   }
   if (findInvitation(db, target, channelName) !== undefined) {
-    return `@${target} is already invited to #${channelName}.`;
+    return `@${target} is already invited to the channel #${channelName}.`;
   }
 
   if (isBanned(db, target, channelName)) {

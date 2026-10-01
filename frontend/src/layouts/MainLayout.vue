@@ -73,6 +73,7 @@
     </q-page-container>
 
     <q-footer class="rl-footer">
+      <TypingStatus :channel-name="activeName" />
       <CommandLine :channel-name="activeName" @list="membersOpen = true" />
     </q-footer>
   </q-layout>
@@ -80,13 +81,14 @@
 
 <script setup lang="ts">
 import { useQuasar } from 'quasar';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 import ChannelHeader from '@/components/channels/ChannelHeader.vue';
 import ChannelList from '@/components/channels/ChannelList.vue';
 import MemberList from '@/components/channels/MemberList.vue';
 import CommandLine from '@/components/chat/CommandLine.vue';
+import TypingStatus from '@/components/chat/TypingStatus.vue';
 import AppIcon from '@/components/common/AppIcon.vue';
 import UserCard from '@/components/common/UserCard.vue';
 import { WORKSPACE_NAME } from '@/services/mock-auth';
@@ -108,6 +110,10 @@ const activeName = computed(() => {
 
 const activeChannel = computed(() => channels.findChannel(activeName.value));
 
+function closeMembersOnEscape(event: KeyboardEvent): void {
+  if (event.key === 'Escape' && membersOpen.value) membersOpen.value = false;
+}
+
 watch(activeName, (name) => {
   if ($q.screen.lt.md) leftOpen.value = false;
   channels.loadMembers(name);
@@ -116,6 +122,9 @@ watch(activeName, (name) => {
 watch(activeChannel, (channel) => {
   if (channel === undefined) membersOpen.value = false;
 });
+
+onMounted(() => window.addEventListener('keydown', closeMembersOnEscape));
+onBeforeUnmount(() => window.removeEventListener('keydown', closeMembersOnEscape));
 
 channels.load();
 channels.loadMembers(activeName.value);
