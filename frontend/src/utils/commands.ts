@@ -13,6 +13,22 @@ const USAGE = {
 
 type CommandName = keyof typeof USAGE;
 
+export interface CommandSuggestion {
+  name: `/${CommandName}`;
+  usage: string;
+  description: string;
+}
+
+export const COMMAND_SUGGESTIONS: readonly CommandSuggestion[] = [
+  { name: '/join', usage: USAGE.join, description: 'Join or create a channel' },
+  { name: '/invite', usage: USAGE.invite, description: 'Invite a user to this channel' },
+  { name: '/revoke', usage: USAGE.revoke, description: 'Revoke a channel invitation' },
+  { name: '/kick', usage: USAGE.kick, description: 'Vote to remove a channel member' },
+  { name: '/quit', usage: USAGE.quit, description: 'Delete this channel' },
+  { name: '/cancel', usage: USAGE.cancel, description: 'Leave this channel' },
+  { name: '/list', usage: USAGE.list, description: 'Show channel members' },
+];
+
 const COMMANDS: readonly string[] = Object.keys(USAGE);
 
 function isCommandName(value: string): value is CommandName {

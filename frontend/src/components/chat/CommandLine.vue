@@ -1,5 +1,32 @@
 <template>
-  <form class="rl-cmd" novalidate @submit.prevent="submit">
+  <form class="rl-cmd" novalidate autocomplete="off" @submit.prevent="submit">
+    <div
+      v-if="suggestions.length > 0"
+      id="command-suggestions"
+      class="rl-cmd__suggestions rl-menu"
+      role="listbox"
+      aria-label="Command suggestions"
+    >
+      <button
+        v-for="(suggestion, index) in suggestions"
+        :id="`command-suggestion-${index}`"
+        :key="suggestion.name"
+        ref="suggestionItems"
+        type="button"
+        :class="['rl-menu__item', { 'is-sel': index === selectedIndex }]"
+        role="option"
+        :aria-selected="index === selectedIndex"
+        @mousedown.prevent="selectSuggestion(suggestion.name)"
+        @mousemove="selectedIndex = index"
+      >
+        <q-icon name="terminal" size="18px" aria-hidden="true" />
+        <span>
+          <span class="rl-menu__name">{{ suggestion.usage }}</span>
+          <span class="rl-menu__hint">{{ suggestion.description }}</span>
+        </span>
+      </button>
+    </div>
+
     <q-input
       ref="input"
       :model-value="text"
@@ -8,8 +35,18 @@
       autofocus
       :placeholder="placeholder"
       :maxlength="1000"
+      name="chat-command"
+      autocomplete="off"
+      autocapitalize="off"
+      spellcheck="false"
       aria-label="Message or command"
+      :aria-controls="suggestions.length > 0 ? 'command-suggestions' : undefined"
+      :aria-expanded="suggestions.length > 0"
+      :aria-activedescendant="
+        suggestions.length > 0 ? `command-suggestion-${selectedIndex}` : undefined
+      "
       @update:model-value="update"
+      @keydown="onKeydown"
     >
       <template #prepend>
         <q-icon :name="icon" size="18px" />
@@ -33,14 +70,14 @@
 <script setup lang="ts">
 import type { QInput } from 'quasar';
 import { useQuasar } from 'quasar';
-import { computed, ref, useTemplateRef } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { KICK_VOTES_TO_BAN } from '@/services/mock-channels';
 import { useChannelStore } from '@/stores/channel-store';
 import { useMessageStore } from '@/stores/message-store';
 import type { ChannelVisibility, CommandInput, JoinedChannel } from '@/types/types';
-import { parseInput } from '@/utils/commands';
+import { COMMAND_SUGGESTIONS, parseInput } from '@/utils/commands';
 
 const { channelName } = defineProps<{
   channelName: string;
@@ -56,7 +93,10 @@ const channels = useChannelStore();
 const messages = useMessageStore();
 
 const text = ref('');
+const selectedIndex = ref(0);
+const suggestionsDismissed = ref(false);
 const inputRef = useTemplateRef<QInput>('input');
+const suggestionItemsRef = useTemplateRef<HTMLButtonElement[]>('suggestionItems');
 
 const channel = computed(() => channels.findChannel(channelName));
 
@@ -71,8 +111,66 @@ const icon = computed(() => {
   return channel.value.visibility === 'private' ? 'lock' : 'tag';
 });
 
+const suggestions = computed(() => {
+  const query = text.value.toLowerCase();
+  if (suggestionsDismissed.value || !query.startsWith('/') || query.includes(' ')) return [];
+  return COMMAND_SUGGESTIONS.filter((command) => command.name.startsWith(query));
+});
+
+watch(suggestions, () => {
+  selectedIndex.value = 0;
+});
+
+watch(selectedIndex, (index) => {
+  void nextTick(() => {
+    suggestionItemsRef.value?.[index]?.scrollIntoView({ block: 'nearest' });
+  });
+});
+
 function update(value: string | number | null): void {
   text.value = value === null ? '' : String(value);
+  suggestionsDismissed.value = false;
+}
+
+function selectSuggestion(name: string): boolean {
+  const command = COMMAND_SUGGESTIONS.find((item) => item.name === name);
+  if (command === undefined) return false;
+
+  text.value = command.usage === command.name ? command.name : `${command.name} `;
+  suggestionsDismissed.value = true;
+  void nextTick(() => inputRef.value?.focus());
+  return command.usage === command.name;
+}
+
+function onKeydown(event: KeyboardEvent): void {
+  if (suggestions.value.length === 0) return;
+
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    selectedIndex.value = (selectedIndex.value + 1) % suggestions.value.length;
+    return;
+  }
+
+  if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    selectedIndex.value =
+      (selectedIndex.value - 1 + suggestions.value.length) % suggestions.value.length;
+    return;
+  }
+
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    text.value = '';
+    return;
+  }
+
+  if (event.key === 'Enter' || event.key === 'Tab') {
+    const suggestion = suggestions.value[selectedIndex.value];
+    if (suggestion === undefined) return;
+    event.preventDefault();
+    const canRunImmediately = selectSuggestion(suggestion.name);
+    if (event.key === 'Enter' && canRunImmediately) submit();
+  }
 }
 
 function fail(message: string): false {

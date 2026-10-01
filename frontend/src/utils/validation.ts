@@ -11,7 +11,9 @@ export function validateNickName(value: string): string | null {
 }
 
 export function validateEmail(value: string): string | null {
-  if (value.trim().length === 0) return 'Email is required.';
+  const email = value.trim();
+  if (email.length === 0) return 'Email is required.';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Enter a valid email address.';
   return null;
 }
 
@@ -23,7 +25,9 @@ export function validatePassword(value: string): string | null {
 }
 
 export function validateIdentifier(value: string): string | null {
-  if (value.trim().length === 0) return 'Enter your nickname or email.';
+  const identifier = value.trim();
+  if (identifier.length === 0) return 'Enter your nickname or email.';
+  if (identifier.includes('@')) return validateEmail(identifier);
   return null;
 }
 
