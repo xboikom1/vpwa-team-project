@@ -73,6 +73,7 @@
     </q-page-container>
 
     <q-footer class="rl-footer">
+      <TypingStatus :channel-name="activeName" />
       <CommandLine :channel-name="activeName" @list="membersOpen = true" />
     </q-footer>
   </q-layout>
@@ -87,6 +88,7 @@ import ChannelHeader from '@/components/channels/ChannelHeader.vue';
 import ChannelList from '@/components/channels/ChannelList.vue';
 import MemberList from '@/components/channels/MemberList.vue';
 import CommandLine from '@/components/chat/CommandLine.vue';
+import TypingStatus from '@/components/chat/TypingStatus.vue';
 import AppIcon from '@/components/common/AppIcon.vue';
 import UserCard from '@/components/common/UserCard.vue';
 import { WORKSPACE_NAME } from '@/services/mock-auth';
