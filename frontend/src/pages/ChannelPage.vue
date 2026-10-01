@@ -1,5 +1,5 @@
 <template>
-  <q-page :class="channel ? 'rl-chat' : 'rl-empty rl-empty--pane'">
+  <q-page :class="channel ? 'rl-chat' : 'rl-empty rl-empty--pane'" :style-fn="pageStyle">
     <MessageList v-if="channel" :channel-name="channel.name" />
 
     <template v-else>
@@ -13,6 +13,7 @@
 </template>
 
 <script setup lang="ts">
+import type { CSSProperties } from 'vue';
 import { computed } from 'vue';
 
 import MessageList from '@/components/chat/MessageList.vue';
@@ -23,6 +24,11 @@ const { channelName } = defineProps<{
 }>();
 
 const channels = useChannelStore();
+
+function pageStyle(offset: number, height: number): CSSProperties {
+  const availableHeight = `${height - offset}px`;
+  return { height: availableHeight, minHeight: availableHeight };
+}
 
 const channel = computed(() => channels.findChannel(channelName));
 </script>

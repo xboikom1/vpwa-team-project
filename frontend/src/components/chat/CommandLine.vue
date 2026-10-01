@@ -127,6 +127,13 @@ watch(selectedIndex, (index) => {
   });
 });
 
+watch(
+  () => channelName,
+  () => {
+    void nextTick(() => inputRef.value?.focus());
+  },
+);
+
 function update(value: string | number | null): void {
   text.value = value === null ? '' : String(value);
   suggestionsDismissed.value = false;
