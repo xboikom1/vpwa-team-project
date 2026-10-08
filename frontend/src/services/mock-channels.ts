@@ -172,6 +172,17 @@ const HISTORY_TEXTS = [
   'Thanks, I will follow up on this tomorrow.',
 ] as const;
 
+const INCOMING_MENTION_CHANCE = 0.25;
+const INCOMING_TEXTS = [
+  'Has anyone seen the latest build results?',
+  'I pushed a small fix, please pull before you continue.',
+  'Lunch in ten minutes, who is in?',
+  'The meeting notes are in the shared folder.',
+  'Can you take a look at this when you have a moment?',
+  'Looks good to me, shipping it.',
+  'I will be offline for an hour this afternoon.',
+] as const;
+
 let lastMessageId = 0;
 
 function ago(ms: number): string {
@@ -317,6 +328,25 @@ function banMember(db: ChannelDb, nickName: string, channelName: string): void {
   );
   removeInvitation(db, nickName, channelName);
   db.bans.push({ channelName, nickName });
+}
+
+function pickRandom<T>(items: readonly T[]): T | undefined {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+function addMessage(db: ChannelDb, author: string, channelName: string, text: string): Message {
+  lastMessageId += 1;
+  const message: Message = {
+    id: lastMessageId,
+    channelName,
+    author,
+    text,
+    createdAt: new Date().toISOString(),
+  };
+
+  db.messages.push(message);
+  markActivity(channelName);
+  return message;
 }
 
 export function listChannels(nickName: string): JoinedChannel[] {
@@ -568,17 +598,39 @@ export function postMessage(nickName: string, channelName: string, text: string)
     return `Join #${channelName} before sending messages.`;
   }
 
-  lastMessageId += 1;
-  db.messages.push({
-    id: lastMessageId,
-    channelName,
-    author: nickName,
-    text,
-    createdAt: new Date().toISOString(),
-  });
-
-  markActivity(channelName);
+  addMessage(db, nickName, channelName, text);
   return null;
+}
+
+export function receiveTypedMessage(
+  author: string,
+  channelName: string,
+  text: string,
+): Message | null {
+  const db = loadDb();
+  if (findMember(db, author, channelName) === undefined) return null;
+
+  return { ...addMessage(db, author, channelName, text) };
+}
+
+export function receiveSimulatedMessage(nickName: string, openChannel: string): Message | null {
+  const db = loadDb();
+
+  const joined = db.members.filter(
+    (member) => member.nickName === nickName && member.channelName !== openChannel,
+  );
+  const channelName = pickRandom(joined)?.channelName;
+  if (channelName === undefined) return null;
+
+  const others = db.members.filter(
+    (member) => member.channelName === channelName && member.nickName !== nickName,
+  );
+  const author = pickRandom(others)?.nickName;
+  const text = pickRandom(INCOMING_TEXTS);
+  if (author === undefined || text === undefined) return null;
+
+  const addressed = Math.random() < INCOMING_MENTION_CHANCE;
+  return { ...addMessage(db, author, channelName, addressed ? `@${nickName} ${text}` : text) };
 }
 
 export function markActivity(channelName: string): void {
