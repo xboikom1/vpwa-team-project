@@ -32,6 +32,7 @@ import { onBeforeUnmount, ref, watch } from 'vue';
 
 import { useAuthStore } from '@/stores/auth-store';
 import { useChannelStore } from '@/stores/channel-store';
+import { useMessageStore } from '@/stores/message-store';
 
 const { channelName } = defineProps<{
   channelName: string;
@@ -39,6 +40,9 @@ const { channelName } = defineProps<{
 
 const auth = useAuthStore();
 const channels = useChannelStore();
+const messages = useMessageStore();
+
+const SEND_DELAY_MS = 800;
 
 const DRAFTS = [
   'Does anyone have time to review the latest changes?',
@@ -73,7 +77,7 @@ function resetTyping(): void {
 }
 
 function scheduleTyping(delay = 4_000): void {
-  if (channelName === '') return;
+  if (channelName === '' || auth.presence === 'offline') return;
   startTimer = setTimeout(startTyping, delay);
 }
 
@@ -105,14 +109,15 @@ function startTyping(): void {
     typingTimer = undefined;
 
     endTimer = setTimeout(() => {
+      messages.receiveTyped(channelName, member.nickName, message);
       resetTyping();
       scheduleTyping(5_000);
-    }, 2_500);
+    }, SEND_DELAY_MS);
   }, 85);
 }
 
 watch(
-  () => channelName,
+  () => [channelName, auth.presence === 'offline'],
   () => {
     clearTimers();
     resetTyping();
