@@ -1,24 +1,38 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 
 import * as mockChannels from '@/services/mock-channels';
 import { notifyMessage } from '@/services/notifications';
 import { useAuthStore } from '@/stores/auth-store';
+import { useChannelStore } from '@/stores/channel-store';
 import type { Message } from '@/types/types';
 
 const SIMULATED_RECIPIENT = 'johndoe';
 
 export const useMessageStore = defineStore('messages', () => {
   const auth = useAuthStore();
+  const channels = useChannelStore();
 
   const messages = ref<Message[]>([]);
 
   let openChannel = '';
+  let offlineSince: string | null = null;
 
   function open(channelName: string): void {
     openChannel = channelName;
+
+    const me = auth.profile?.nickName;
+    if (me === undefined) {
+      messages.value = [];
+      return;
+    }
+
+    const since = offlineSince;
+    const all = mockChannels.listMessages(me, channelName);
     messages.value =
-      auth.profile === null ? [] : mockChannels.listMessages(auth.profile.nickName, channelName);
+      since === null
+        ? all
+        : all.filter((message) => message.author === me || message.createdAt <= since);
   }
 
   function send(channelName: string, text: string): string | null {
@@ -30,6 +44,8 @@ export const useMessageStore = defineStore('messages', () => {
   }
 
   function receive(message: Message): void {
+    if (auth.presence === 'offline') return;
+
     if (message.channelName === openChannel) messages.value.push(message);
     notifyMessage(message);
   }
@@ -37,7 +53,11 @@ export const useMessageStore = defineStore('messages', () => {
   function receiveSimulated(): void {
     if (auth.profile?.nickName !== SIMULATED_RECIPIENT) return;
 
-    const message = mockChannels.receiveSimulatedMessage(auth.profile.nickName, openChannel);
+    const message = mockChannels.receiveSimulatedMessage(
+      auth.profile.nickName,
+      openChannel,
+      auth.presence === 'offline',
+    );
     if (message !== null) receive(message);
   }
 
@@ -45,6 +65,21 @@ export const useMessageStore = defineStore('messages', () => {
     const message = mockChannels.receiveTypedMessage(author, channelName, text);
     if (message !== null) receive(message);
   }
+
+  watch(
+    () => auth.presence,
+    (presence, previous) => {
+      if (presence === 'offline') {
+        offlineSince = new Date().toISOString();
+        return;
+      }
+      if (previous !== 'offline') return;
+
+      offlineSince = null;
+      open(openChannel);
+      channels.load();
+    },
+  );
 
   return {
     messages,
