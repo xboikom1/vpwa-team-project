@@ -613,11 +613,15 @@ export function receiveTypedMessage(
   return { ...addMessage(db, author, channelName, text) };
 }
 
-export function receiveSimulatedMessage(nickName: string, openChannel: string): Message | null {
+export function receiveSimulatedMessage(
+  nickName: string,
+  openChannel: string,
+  offline: boolean,
+): Message | null {
   const db = loadDb();
 
   const joined = db.members.filter(
-    (member) => member.nickName === nickName && member.channelName !== openChannel,
+    (member) => member.nickName === nickName && (offline || member.channelName !== openChannel),
   );
   const channelName = pickRandom(joined)?.channelName;
   if (channelName === undefined) return null;
