@@ -14,9 +14,21 @@ export const useMessageStore = defineStore('messages', () => {
   const channels = useChannelStore();
 
   const messages = ref<Message[]>([]);
+  const unread = ref<Record<string, number>>({});
 
   let openChannel = '';
   let offlineSince: string | null = null;
+
+  function refreshUnread(): void {
+    const me = auth.profile?.nickName;
+    if (me === undefined) {
+      unread.value = {};
+      return;
+    }
+
+    mockChannels.markRead(me, openChannel, offlineSince ?? new Date().toISOString());
+    unread.value = mockChannels.countUnread(me, offlineSince);
+  }
 
   function open(channelName: string): void {
     openChannel = channelName;
@@ -33,6 +45,8 @@ export const useMessageStore = defineStore('messages', () => {
       since === null
         ? all
         : all.filter((message) => message.author === me || message.createdAt <= since);
+
+    refreshUnread();
   }
 
   function send(channelName: string, text: string): string | null {
@@ -47,6 +61,7 @@ export const useMessageStore = defineStore('messages', () => {
     if (auth.presence === 'offline') return;
 
     if (message.channelName === openChannel) messages.value.push(message);
+    refreshUnread();
     notifyMessage(message);
   }
 
@@ -81,8 +96,11 @@ export const useMessageStore = defineStore('messages', () => {
     },
   );
 
+  watch(() => auth.profile?.nickName, refreshUnread, { immediate: true });
+
   return {
     messages,
+    unread,
     open,
     send,
     receiveSimulated,
