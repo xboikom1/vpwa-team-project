@@ -26,6 +26,7 @@
         v-for="channel in section.items"
         :key="channel.name"
         :channel="channel"
+        :unread="messages.unread[channel.name] ?? 0"
         :active="channel.name === activeName"
         :tap="tap"
         @leave="confirmLeave"
@@ -62,6 +63,7 @@ import InviteCard from '@/components/channels/InviteCard.vue';
 import AppIcon from '@/components/common/AppIcon.vue';
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue';
 import { useChannelStore } from '@/stores/channel-store';
+import { useMessageStore } from '@/stores/message-store';
 import type { JoinedChannel, PendingInvitation } from '@/types/types';
 
 const { activeName, tap = false } = defineProps<{
@@ -72,6 +74,7 @@ const { activeName, tap = false } = defineProps<{
 const $q = useQuasar();
 const router = useRouter();
 const channels = useChannelStore();
+const messages = useMessageStore();
 
 const sections = computed(() => [
   {
