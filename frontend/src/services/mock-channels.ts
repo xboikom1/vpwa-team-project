@@ -200,6 +200,7 @@ function seedDb(): ChannelDb {
   };
 
   const createdAt = ago(60 * DAY_MS);
+  const lastReadAt = ago(0);
 
   for (const seed of SEED_CHANNELS) {
     db.channels.push({
@@ -215,6 +216,7 @@ function seedDb(): ChannelDb {
         nickName,
         role: nickName === seed.admin ? 'admin' : 'member',
         joinedAt: createdAt,
+        lastReadAt,
       });
     }
   }
@@ -399,7 +401,7 @@ export function createChannel(
 
   const now = new Date().toISOString();
   db.channels.push({ name: channelName, visibility, createdAt: now, lastActivityAt: now });
-  db.members.push({ channelName, nickName, role: 'admin', joinedAt: now });
+  db.members.push({ channelName, nickName, role: 'admin', joinedAt: now, lastReadAt: now });
 
   return null;
 }
@@ -422,7 +424,8 @@ export function joinChannel(
     return `#${channelName} is private. Ask its admin for an invite.`;
   }
 
-  db.members.push({ channelName, nickName, role: 'member', joinedAt: new Date().toISOString() });
+  const now = new Date().toISOString();
+  db.members.push({ channelName, nickName, role: 'member', joinedAt: now, lastReadAt: now });
   return null;
 }
 
@@ -570,7 +573,8 @@ export function acceptInvitation(nickName: string, channelName: string): string 
   }
 
   removeInvitation(db, nickName, channelName);
-  db.members.push({ channelName, nickName, role: 'member', joinedAt: new Date().toISOString() });
+  const now = new Date().toISOString();
+  db.members.push({ channelName, nickName, role: 'member', joinedAt: now, lastReadAt: now });
 
   return null;
 }
@@ -589,6 +593,31 @@ export function listMessages(nickName: string, channelName: string): Message[] {
   return db.messages
     .filter((message) => message.channelName === channelName)
     .map((message) => ({ ...message }));
+}
+
+export function markRead(nickName: string, channelName: string, readAt: string): void {
+  const db = loadDb();
+  const member = findMember(db, nickName, channelName);
+  if (member !== undefined) member.lastReadAt = readAt;
+}
+
+export function countUnread(nickName: string, until: string | null): Record<string, number> {
+  const db = loadDb();
+  const unread: Record<string, number> = {};
+
+  for (const member of db.members) {
+    if (member.nickName !== nickName) continue;
+
+    unread[member.channelName] = db.messages.filter(
+      (message) =>
+        message.channelName === member.channelName &&
+        message.author !== nickName &&
+        message.createdAt > member.lastReadAt &&
+        (until === null || message.createdAt <= until),
+    ).length;
+  }
+
+  return unread;
 }
 
 export function postMessage(nickName: string, channelName: string, text: string): string | null {
