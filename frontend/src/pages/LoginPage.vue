@@ -52,6 +52,7 @@ import { useRoute, useRouter } from 'vue-router';
 import AuthCard from '@/components/auth/AuthCard.vue';
 import AppField from '@/components/common/AppField.vue';
 import AppIcon from '@/components/common/AppIcon.vue';
+import { requestPermission } from '@/services/notifications';
 import { useAuthStore } from '@/stores/auth-store';
 import { validateIdentifier } from '@/utils/validation';
 
@@ -98,6 +99,8 @@ function submit(): void {
     formError.value = failure.message;
     return;
   }
+
+  requestPermission();
 
   const redirect = route.query.redirect;
   const target = typeof redirect === 'string' && redirect.startsWith('/') ? redirect : '/';

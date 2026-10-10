@@ -43,6 +43,7 @@ export interface ChannelMember {
   nickName: string;
   role: ChannelRole;
   joinedAt: string;
+  lastReadAt: string;
 }
 
 export interface Invitation {

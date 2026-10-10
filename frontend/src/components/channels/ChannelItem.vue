@@ -14,6 +14,13 @@
 
     <span class="rl-ch__end">
       <span v-if="isAdmin" class="rl-badge rl-badge--owner">Admin</span>
+      <span
+        v-if="unread > 0"
+        class="rl-badge rl-badge--count"
+        :aria-label="`${unread} unread messages`"
+      >
+        {{ unread }}
+      </span>
 
       <span class="rl-ch__actions">
         <button
@@ -49,10 +56,12 @@ import type { JoinedChannel } from '@/types/types';
 
 const {
   channel,
+  unread = 0,
   active = false,
   tap = false,
 } = defineProps<{
   channel: JoinedChannel;
+  unread?: number;
   active?: boolean;
   tap?: boolean;
 }>();

@@ -94,11 +94,17 @@ import UserCard from '@/components/common/UserCard.vue';
 import { WORKSPACE_NAME } from '@/services/mock-auth';
 import { useAuthStore } from '@/stores/auth-store';
 import { useChannelStore } from '@/stores/channel-store';
+import { useMessageStore } from '@/stores/message-store';
 
 const $q = useQuasar();
 const route = useRoute();
 const auth = useAuthStore();
 const channels = useChannelStore();
+
+const messages = useMessageStore();
+
+const INCOMING_INTERVAL_MS = 10_000;
+let incomingTimer: ReturnType<typeof setInterval> | undefined;
 
 const leftOpen = ref(false);
 const membersOpen = ref(false);
@@ -123,8 +129,15 @@ watch(activeChannel, (channel) => {
   if (channel === undefined) membersOpen.value = false;
 });
 
-onMounted(() => window.addEventListener('keydown', closeMembersOnEscape));
-onBeforeUnmount(() => window.removeEventListener('keydown', closeMembersOnEscape));
+onMounted(() => {
+  window.addEventListener('keydown', closeMembersOnEscape);
+  incomingTimer = setInterval(messages.receiveSimulated, INCOMING_INTERVAL_MS);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', closeMembersOnEscape);
+  if (incomingTimer !== undefined) clearInterval(incomingTimer);
+});
 
 channels.load();
 channels.loadMembers(activeName.value);

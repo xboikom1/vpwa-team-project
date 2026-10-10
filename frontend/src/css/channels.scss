@@ -16,6 +16,10 @@
     outline-offset: -2px;
   }
 
+  &__end > .rl-badge--count {
+    margin-left: var(--space-1);
+  }
+
   &:focus-within {
     color: var(--text-primary);
   }
