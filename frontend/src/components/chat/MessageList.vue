@@ -20,7 +20,7 @@
     </div>
 
     <q-btn
-      v-if="newMessageCount > 0"
+      v-if="isScrolledUp && newMessageCount > 0"
       class="rl-msgs-pane__new"
       rounded
       unelevated
@@ -55,6 +55,7 @@ const rootRef = useTemplateRef<HTMLElement>('root');
 const visibleStart = ref(0);
 const loadingOlder = ref(false);
 const lastSeenId = ref(0);
+const isScrolledUp = ref(false);
 
 const me = computed(() => auth.profile?.nickName ?? '');
 const visibleMessages = computed(() => messages.messages.slice(visibleStart.value));
@@ -80,6 +81,8 @@ function scrollToBottom(): void {
   if (root === null) return;
 
   root.scrollTop = root.scrollHeight;
+  isScrolledUp.value = false;
+  markLatestSeen();
 }
 
 async function openChannel(name: string): Promise<void> {
@@ -109,9 +112,20 @@ function onScroll(): void {
   const root = rootRef.value;
   if (root === null || loadingOlder.value) return;
 
-  if (root.scrollHeight - root.clientHeight - root.scrollTop <= 2) markLatestSeen();
+  isScrolledUp.value = root.scrollHeight - root.clientHeight - root.scrollTop > 2;
+  if (!isScrolledUp.value) markLatestSeen();
   if (root.scrollTop <= LOAD_THRESHOLD) void loadOlder();
 }
+
+watch(
+  () => messages.messages.at(-1)?.id,
+  async () => {
+    if (isScrolledUp.value) return;
+
+    await nextTick();
+    if (!isScrolledUp.value) scrollToBottom();
+  },
+);
 
 watch(
   () => channelName,
