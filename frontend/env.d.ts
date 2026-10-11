@@ -1,3 +1,5 @@
+import 'vite/client';
+
 /**
  * Add types (that are not auto-magically added by Quasar CLI already)
  * for your custom variables to avoid TypeScript errors, like dynamic
@@ -12,4 +14,3 @@
  *   readonly MY_OTHER_VAR: string;
  * }
  */
-interface ImportMetaEnv {}
