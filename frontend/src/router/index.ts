@@ -9,7 +9,7 @@ import {
 import { useAuthStore } from '@/stores/auth-store';
 import routes from './routes';
 
-export default defineRouter(({ store }) => {
+export default defineRouter(() => {
   const createHistory = import.meta.env.QUASAR_SERVER
     ? createMemoryHistory
     : import.meta.env.QUASAR_VUE_ROUTER_MODE === 'history'
@@ -27,7 +27,7 @@ export default defineRouter(({ store }) => {
   });
 
   Router.beforeEach((to) => {
-    const auth = useAuthStore(store);
+    const auth = useAuthStore();
 
     if (to.meta.requiresAuth === true && !auth.isAuthenticated) {
       return { name: 'login', query: { redirect: to.fullPath } };
