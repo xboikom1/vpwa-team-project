@@ -153,10 +153,32 @@
   flex-direction: column;
 }
 
+.rl-msgs-pane {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+
+  &__new {
+    position: absolute;
+    bottom: var(--space-4);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1;
+    max-width: calc(100% - var(--space-4) * 2);
+    background: var(--accent);
+    color: var(--canvas);
+    box-shadow: var(--shadow-overlay);
+    white-space: nowrap;
+  }
+}
+
 .rl-msgs {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  overflow-anchor: none;
   padding: var(--space-4) var(--space-4) var(--space-2);
 
   &__list {
