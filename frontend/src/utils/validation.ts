@@ -7,6 +7,7 @@ export function validateName(value: string, label: string): string | null {
 export function validateNickName(value: string): string | null {
   if (value.trim().length === 0) return 'Nickname is required.';
   if (value.trim().length > 20) return 'Nickname cannot exceed 20 characters.';
+  if (!/^[a-z0-9_]+$/.test(value)) return 'Use only a-z, 0-9 and _.';
   return null;
 }
 
