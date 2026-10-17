@@ -5,7 +5,7 @@
         <span class="rl-mark__sigil">#</span>
         <span class="rl-mark__name">404</span>
       </span>
-      <p class="rl-auth__tag">No such channel, no such page.</p>
+      <p class="rl-auth__tag">This page does not exist.</p>
     </header>
 
     <router-link class="rl-btn rl-btn--primary" to="/">Back to Chatflow</router-link>
