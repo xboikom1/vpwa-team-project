@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import { useAuthStore } from '@/stores/auth-store';
 import { useMessageStore } from '@/stores/message-store';
@@ -134,4 +134,5 @@ watch(
 );
 
 onMounted(scrollToBottom);
+onBeforeUnmount(() => messages.open(''));
 </script>
