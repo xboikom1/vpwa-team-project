@@ -230,7 +230,7 @@ async function run(input: CommandInput): Promise<boolean> {
 
   switch (input.kind) {
     case 'message': {
-      const error = messages.send(current.name, input.text);
+      const error = await messages.send(current.name, input.text);
       return error === null ? true : fail(error);
     }
 

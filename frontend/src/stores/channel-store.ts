@@ -74,6 +74,16 @@ export const useChannelStore = defineStore('channels', () => {
     return channels.value.find((channel) => channel.name === channelName);
   }
 
+  function incrementUnread(channelName: string): void {
+    const channel = findChannel(channelName);
+    if (channel !== undefined) channel.unread += 1;
+  }
+
+  function clearUnread(channelName: string): void {
+    const channel = findChannel(channelName);
+    if (channel !== undefined) channel.unread = 0;
+  }
+
   async function runRemote(action: () => Promise<string | null>): Promise<string | null> {
     if (auth.profile === null) return 'Sign in to manage channels.';
 
@@ -141,6 +151,8 @@ export const useChannelStore = defineStore('channels', () => {
     load,
     loadMembers,
     findChannel,
+    incrementUnread,
+    clearUnread,
     create,
     join,
     invite,

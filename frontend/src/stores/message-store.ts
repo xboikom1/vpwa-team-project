@@ -1,110 +1,124 @@
+import { AppVisibility } from 'quasar';
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 
-import * as mockChannels from '@/services/mock-channels';
+import * as messageApi from '@/services/message-api';
 import { notifyMessage } from '@/services/notifications';
+import { connectRealtime, disconnectRealtime } from '@/services/realtime';
 import { useAuthStore } from '@/stores/auth-store';
 import { useChannelStore } from '@/stores/channel-store';
 import type { Message } from '@/types/types';
-
-const SIMULATED_RECIPIENT = 'johndoe';
 
 export const useMessageStore = defineStore('messages', () => {
   const auth = useAuthStore();
   const channels = useChannelStore();
 
   const messages = ref<Message[]>([]);
-  const unread = ref<Record<string, number>>({});
 
   let openChannel = '';
-  let offlineSince: string | null = null;
 
-  function refreshUnread(): void {
-    const me = auth.profile?.nickName;
-    if (me === undefined) {
-      unread.value = {};
-      return;
-    }
-
-    mockChannels.markRead(me, openChannel, offlineSince ?? new Date().toISOString());
-    unread.value = mockChannels.countUnread(me, offlineSince);
+  function append(message: Message): void {
+    if (message.channelName !== openChannel) return;
+    if (messages.value.some((item) => item.id === message.id)) return;
+    messages.value.push(message);
   }
 
-  function open(channelName: string): void {
+  function markRead(channelName: string): void {
+    channels.clearUnread(channelName);
+    void messageApi.markChannelRead(channelName);
+  }
+
+  async function fetchOpen(channelName: string): Promise<void> {
+    try {
+      const page = await messageApi.fetchMessages(channelName);
+      if (openChannel !== channelName) return;
+      messages.value = page.messages;
+    } catch {
+      if (openChannel === channelName) messages.value = [];
+    }
+  }
+
+  async function open(channelName: string): Promise<void> {
     openChannel = channelName;
+    messages.value = [];
+    if (channelName === '' || auth.profile === null) return;
 
-    const me = auth.profile?.nickName;
-    if (me === undefined) {
-      messages.value = [];
-      return;
-    }
-
-    const since = offlineSince;
-    const all = mockChannels.listMessages(me, channelName);
-    messages.value =
-      since === null
-        ? all
-        : all.filter((message) => message.author === me || message.createdAt <= since);
-
-    refreshUnread();
+    await fetchOpen(channelName);
+    if (openChannel === channelName) markRead(channelName);
   }
 
-  function send(channelName: string, text: string): string | null {
+  function close(): void {
+    openChannel = '';
+    messages.value = [];
+  }
+
+  async function send(channelName: string, text: string): Promise<string | null> {
     if (auth.profile === null) return 'Sign in to send messages.';
 
-    const error = mockChannels.postMessage(auth.profile.nickName, channelName, text);
-    open(channelName);
-    return error;
+    const result = await messageApi.sendMessage(channelName, text);
+    if (!result.ok) return result.error;
+
+    append(result.message);
+    return null;
   }
 
   function receive(message: Message): void {
     if (auth.presence === 'offline') return;
 
-    if (message.channelName === openChannel) messages.value.push(message);
-    refreshUnread();
+    const mine = message.author === auth.profile?.nickName;
+    const viewing = message.channelName === openChannel;
+
+    if (viewing) append(message);
+    if (mine) return;
+
+    if (channels.findChannel(message.channelName) === undefined) void channels.load();
+    if (viewing && AppVisibility.appVisible) markRead(message.channelName);
+    else channels.incrementUnread(message.channelName);
+
     notifyMessage(message);
   }
 
-  function receiveSimulated(): void {
-    if (auth.profile?.nickName !== SIMULATED_RECIPIENT) return;
+  async function refresh(): Promise<void> {
+    await channels.load();
+    if (openChannel === '') return;
 
-    const message = mockChannels.receiveSimulatedMessage(
-      auth.profile.nickName,
-      openChannel,
-      auth.presence === 'offline',
-    );
-    if (message !== null) receive(message);
+    await fetchOpen(openChannel);
+    if (AppVisibility.appVisible) markRead(openChannel);
   }
 
-  function receiveTyped(channelName: string, author: string, text: string): void {
-    const message = mockChannels.receiveTypedMessage(author, channelName, text);
-    if (message !== null) receive(message);
+  function start(): void {
+    const nickName = auth.profile?.nickName;
+    if (nickName === undefined) return;
+
+    connectRealtime(nickName, { onMessage: receive, onReconnect: () => void refresh() });
+  }
+
+  function stop(): void {
+    disconnectRealtime();
+    close();
   }
 
   watch(
     () => auth.presence,
     (presence, previous) => {
-      if (presence === 'offline') {
-        offlineSince = new Date().toISOString();
-        return;
-      }
-      if (previous !== 'offline') return;
-
-      offlineSince = null;
-      open(openChannel);
-      void channels.load();
+      if (previous === 'offline' && presence !== 'offline') void refresh();
     },
   );
 
-  watch(() => auth.profile?.nickName, refreshUnread, { immediate: true });
+  watch(
+    () => AppVisibility.appVisible,
+    (visible) => {
+      if (visible && openChannel !== '' && auth.presence !== 'offline') markRead(openChannel);
+    },
+  );
 
   return {
     messages,
-    unread,
     open,
+    close,
     send,
-    receiveSimulated,
-    receiveTyped,
+    start,
+    stop,
   };
 });
 

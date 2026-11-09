@@ -32,7 +32,6 @@ import { onBeforeUnmount, ref, watch } from 'vue';
 
 import { useAuthStore } from '@/stores/auth-store';
 import { useChannelStore } from '@/stores/channel-store';
-import { useMessageStore } from '@/stores/message-store';
 
 const { channelName } = defineProps<{
   channelName: string;
@@ -40,7 +39,6 @@ const { channelName } = defineProps<{
 
 const auth = useAuthStore();
 const channels = useChannelStore();
-const messages = useMessageStore();
 
 const SEND_DELAY_MS = 800;
 
@@ -109,7 +107,6 @@ function startTyping(): void {
     typingTimer = undefined;
 
     endTimer = setTimeout(() => {
-      messages.receiveTyped(channelName, member.nickName, message);
       resetTyping();
       scheduleTyping(5_000);
     }, SEND_DELAY_MS);

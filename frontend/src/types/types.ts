@@ -55,6 +55,7 @@ export interface Invitation {
 
 export interface JoinedChannel extends Channel {
   role: ChannelRole;
+  unread: number;
 }
 
 export interface PendingInvitation extends Invitation {

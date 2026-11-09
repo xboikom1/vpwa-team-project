@@ -103,9 +103,6 @@ const channels = useChannelStore();
 
 const messages = useMessageStore();
 
-const INCOMING_INTERVAL_MS = 10_000;
-let incomingTimer: ReturnType<typeof setInterval> | undefined;
-
 const leftOpen = ref(false);
 const membersOpen = ref(false);
 
@@ -131,12 +128,12 @@ watch(activeChannel, (channel) => {
 
 onMounted(() => {
   window.addEventListener('keydown', closeMembersOnEscape);
-  incomingTimer = setInterval(messages.receiveSimulated, INCOMING_INTERVAL_MS);
+  messages.start();
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', closeMembersOnEscape);
-  if (incomingTimer !== undefined) clearInterval(incomingTimer);
+  messages.stop();
 });
 
 void channels.load();

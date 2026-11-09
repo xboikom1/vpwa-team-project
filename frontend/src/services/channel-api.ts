@@ -12,6 +12,7 @@ interface ServerChannel {
   createdAt: string;
   lastMessageAt: string;
   role: ChannelRole;
+  unread: number;
 }
 
 interface ServerInvitation {
@@ -28,6 +29,7 @@ function toChannel(channel: ServerChannel): JoinedChannel {
     createdAt: channel.createdAt,
     lastActivityAt: channel.lastMessageAt,
     role: channel.role,
+    unread: channel.unread,
   };
 }
 
