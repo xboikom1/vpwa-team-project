@@ -1,4 +1,4 @@
-import { hasAccount } from '@/services/mock-auth';
+import { hasAccount } from '@/services/mock-roster';
 import type {
   Channel,
   ChannelBan,

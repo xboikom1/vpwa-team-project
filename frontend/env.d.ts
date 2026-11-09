@@ -14,3 +14,7 @@ import 'vite/client';
  *   readonly MY_OTHER_VAR: string;
  * }
  */
+
+interface ImportMetaEnv {
+  readonly API_URL: string;
+}

@@ -88,12 +88,12 @@ function update(field: Field, value: string): void {
   formError.value = '';
 }
 
-function submit(): void {
+async function submit(): Promise<void> {
   submitted.value = true;
   if (auth.pending) return;
   if (Object.values(errors.value).some((message) => message !== '')) return;
 
-  const failure = auth.login({ identifier: form.identifier, password: form.password });
+  const failure = await auth.login({ identifier: form.identifier, password: form.password });
 
   if (failure !== null) {
     formError.value = failure.message;

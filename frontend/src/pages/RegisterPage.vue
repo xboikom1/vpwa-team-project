@@ -156,12 +156,12 @@ function applyFailure(field: AuthField | 'form', message: string): void {
   formError.value = message;
 }
 
-function submit(): void {
+async function submit(): Promise<void> {
   submitted.value = true;
   if (auth.pending) return;
   if (Object.values(errors.value).some((message) => message !== '')) return;
 
-  const failure = auth.register({
+  const failure = await auth.register({
     firstName: form.firstName.trim(),
     lastName: form.lastName.trim(),
     nickName: form.nickName,
