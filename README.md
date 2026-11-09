@@ -1,12 +1,14 @@
 # Chatflow
 
-Chatflow is an IRC-style team chat frontend. The demo workspace is called Northwind.
+Chatflow is an IRC-style team chat application with a Quasar frontend and an AdonisJS backend. The demo workspace is called Northwind.
 
-The app uses in-memory mock services for accounts, channels, and messages. Incoming messages and typing activity are simulated.
+Authentication (registration, login, logout) is served by the backend. Channels, messages, and typing activity are still in-memory mock services in the frontend.
 
 ## Stack and libraries
 
 - Vue and TypeScript
+- AdonisJS, Lucid ORM, VineJS validation, access-token auth, and rate limiting (`backend`)
+- PostgreSQL
 - Quasar for UI components, dialogs, and notifications
 - Pinia for state management
 - Vue Router for navigation
@@ -26,13 +28,33 @@ The app uses in-memory mock services for accounts, channels, and messages. Incom
 
 ## Run locally
 
+Backend (needs a running PostgreSQL server):
+
+```bash
+cd backend
+npm ci
+cp .env.example .env
+```
+
+Set `APP_KEY` (`node ace generate:key`) and the `DB_*` values in `backend/.env`, create the database named in `DB_DATABASE`, then:
+
+```bash
+node ace migration:run
+node ace db:seed
+npm run dev
+```
+
+Frontend:
+
 ```bash
 cd frontend
 npm ci
 npm run dev
 ```
 
-Demo login: `johndoe` / `chatflow123`.
+The frontend talks to `http://localhost:3333/api/v1` by default; override it with the `API_URL` environment variable when building. The backend accepts requests from the origins listed in `CORS_ORIGIN`.
+
+Seeded login: `johndoe` / `chatflow123`.
 
 ## Build and checks
 
@@ -45,3 +67,11 @@ npm run lint:check
 ```
 
 Use `npm run lint` to format files and apply lint fixes.
+
+Backend checks, run from `backend` (tests need the `chatflow_test` database to exist):
+
+```bash
+npm run typecheck
+npm run lint
+npm test
+```
