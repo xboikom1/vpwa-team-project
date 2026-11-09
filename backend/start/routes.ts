@@ -1,5 +1,5 @@
 import { middleware } from '#start/kernel'
-import { throttle, throttleLogin, throttleRegister } from '#start/limiter'
+import { throttle, throttleLogin, throttleMessages, throttleRegister } from '#start/limiter'
 import router from '@adonisjs/core/services/router'
 import { controllers } from '#generated/controllers'
 
@@ -38,6 +38,12 @@ router
             router
               .delete(':name/membership', [controllers.ChannelMemberships, 'destroy'])
               .as('leave')
+            router.get(':name/messages', [controllers.Messages, 'index']).as('messages.index')
+            router
+              .post(':name/messages', [controllers.Messages, 'store'])
+              .use(throttleMessages)
+              .as('messages.store')
+            router.post(':name/read', [controllers.ChannelReads, 'store']).as('read')
           })
           .prefix('channels')
           .as('channels')

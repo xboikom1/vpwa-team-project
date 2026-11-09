@@ -34,7 +34,14 @@ export default class ChannelService {
       .query()
       .select(
         'channels.*',
-        db.raw("CASE WHEN channels.admin_id = ? THEN 'admin' ELSE 'member' END AS role", [user.id])
+        db.raw("CASE WHEN channels.admin_id = ? THEN 'admin' ELSE 'member' END AS role", [user.id]),
+        db.raw(
+          `(SELECT count(*)::int FROM messages
+            WHERE messages.channel_id = channels.id
+              AND messages.user_id <> ?
+              AND messages.created_at > channel_members.last_read_at) AS unread`,
+          [user.id]
+        )
       )
       .orderBy('channels.name')
   }
@@ -151,7 +158,7 @@ export default class ChannelService {
     return row !== null
   }
 
-  private async findForMember(user: User, name: string) {
+  async findForMember(user: User, name: string) {
     const channel = await Channel.findBy('name', name)
     if (!channel) throw ChannelException.notMember(name)
 

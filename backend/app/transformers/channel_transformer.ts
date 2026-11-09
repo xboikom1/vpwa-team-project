@@ -6,6 +6,7 @@ export default class ChannelTransformer extends BaseTransformer<Channel> {
     return {
       ...this.pick(this.resource, ['name', 'type', 'createdAt', 'lastMessageAt']),
       role: this.resource.$extras.role as 'admin' | 'member',
+      unread: Number(this.resource.$extras.unread ?? 0),
     }
   }
 }

@@ -13,6 +13,11 @@ export const throttleLogin = limiter.define('login', (ctx) => {
     .usingKey(`login_${ctx.request.ip()}_${identifier}`)
 })
 
+export const throttleMessages = limiter.define('messages', (ctx) => {
+  const key = ctx.auth.user?.id ?? ctx.request.ip()
+  return limiter.allowRequests(30).every('10 seconds').usingKey(`messages_${key}`)
+})
+
 export const throttleRegister = limiter.define('register', (ctx) => {
   return limiter.allowRequests(10).every('1 hour').usingKey(`register_${ctx.request.ip()}`)
 })
