@@ -7,5 +7,10 @@ export default {
         status: { tsType: "'online' | 'dnd' | 'offline'" },
       },
     },
+    channels: {
+      columns: {
+        type: { tsType: "'public' | 'private'" },
+      },
+    },
   },
 } satisfies SchemaRules
