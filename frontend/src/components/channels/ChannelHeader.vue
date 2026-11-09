@@ -23,7 +23,7 @@
 
 <script setup lang="ts">
 import AppIcon from '@/components/common/AppIcon.vue';
-import { WORKSPACE_NAME } from '@/services/mock-auth';
+import { WORKSPACE_NAME } from '@/utils/constants';
 import type { JoinedChannel } from '@/types/types';
 
 defineProps<{

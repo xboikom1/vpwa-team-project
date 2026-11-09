@@ -6,6 +6,7 @@ import {
   createWebHistory,
 } from 'vue-router';
 
+import { onUnauthorized } from '@/services/api';
 import { useAuthStore } from '@/stores/auth-store';
 import routes from './routes';
 
@@ -26,8 +27,9 @@ export default defineRouter(() => {
     history: createHistory(import.meta.env.QUASAR_VUE_ROUTER_BASE),
   });
 
-  Router.beforeEach((to) => {
+  Router.beforeEach(async (to) => {
     const auth = useAuthStore();
+    await auth.restore();
 
     if (to.meta.requiresAuth === true && !auth.isAuthenticated) {
       return { name: 'login', query: { redirect: to.fullPath } };
@@ -38,6 +40,11 @@ export default defineRouter(() => {
     }
 
     return true;
+  });
+
+  onUnauthorized(() => {
+    useAuthStore().clearSession();
+    void Router.replace({ name: 'login' });
   });
 
   return Router;

@@ -90,8 +90,8 @@ const PRESENCE_OPTIONS: readonly { value: PresenceStatus; label: string; hint: s
   { value: 'offline', label: 'Offline', hint: 'Appear offline, stay connected' },
 ];
 
-function signOut(): void {
-  auth.logout();
-  void router.replace('/login');
+async function signOut(): Promise<void> {
+  await auth.logout();
+  await router.replace('/login');
 }
 </script>

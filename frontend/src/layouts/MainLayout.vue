@@ -91,7 +91,7 @@ import CommandLine from '@/components/chat/CommandLine.vue';
 import TypingStatus from '@/components/chat/TypingStatus.vue';
 import AppIcon from '@/components/common/AppIcon.vue';
 import UserCard from '@/components/common/UserCard.vue';
-import { WORKSPACE_NAME } from '@/services/mock-auth';
+import { WORKSPACE_NAME } from '@/utils/constants';
 import { useAuthStore } from '@/stores/auth-store';
 import { useChannelStore } from '@/stores/channel-store';
 import { useMessageStore } from '@/stores/message-store';

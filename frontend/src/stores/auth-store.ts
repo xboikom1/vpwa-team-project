@@ -1,9 +1,11 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
-import * as mockAuth from '@/services/mock-auth';
+import { getToken } from '@/services/api';
+import * as authApi from '@/services/auth-api';
 import type {
   AuthFailure,
+  AuthResult,
   LoginInput,
   NotificationFilter,
   PresenceStatus,
@@ -30,38 +32,55 @@ export const useAuthStore = defineStore('auth', () => {
     profile.value === null ? '' : profile.value.nickName.slice(0, 1).toUpperCase(),
   );
 
-  function register(input: RegisterInput): AuthFailure | null {
+  function openSession(result: AuthResult): AuthFailure | null {
+    if (!result.ok) return result.error;
+
+    profile.value = result.profile;
+    presence.value = 'online';
+    return null;
+  }
+
+  async function register(input: RegisterInput): Promise<AuthFailure | null> {
     pending.value = true;
     try {
-      const result = mockAuth.register(input);
-      if (!result.ok) return result.error;
-
-      profile.value = result.profile;
-      presence.value = 'online';
-      return null;
+      return openSession(await authApi.register(input));
     } finally {
       pending.value = false;
     }
   }
 
-  function login(input: LoginInput): AuthFailure | null {
+  async function login(input: LoginInput): Promise<AuthFailure | null> {
     pending.value = true;
     try {
-      const result = mockAuth.login(input);
-      if (!result.ok) return result.error;
-
-      profile.value = result.profile;
-      presence.value = 'online';
-      return null;
+      return openSession(await authApi.login(input));
     } finally {
       pending.value = false;
     }
   }
 
-  function logout(): void {
+  function clearSession(): void {
     profile.value = null;
     presence.value = 'online';
     notificationFilter.value = 'all';
+  }
+
+  async function logout(): Promise<void> {
+    await authApi.logout();
+    clearSession();
+  }
+
+  let restoring: Promise<void> | null = null;
+
+  function restore(): Promise<void> {
+    restoring ??= (async () => {
+      if (getToken() === null) return;
+      try {
+        profile.value = await authApi.fetchCurrentUser();
+      } catch {
+        profile.value = null;
+      }
+    })();
+    return restoring;
   }
 
   function setPresence(next: PresenceStatus): void {
@@ -84,6 +103,8 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     login,
     logout,
+    clearSession,
+    restore,
     setPresence,
     setNotificationFilter,
   };
