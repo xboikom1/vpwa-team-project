@@ -1,44 +1,8 @@
 import Channel from '#models/channel'
-import User from '#models/user'
-import db from '@adonisjs/lucid/services/db'
+import { bodyOf, invite, makeChannel, makeUser, truncateAll } from '#tests/helpers'
 import limiter from '@adonisjs/limiter/services/main'
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-
-async function makeUser(nickName: string) {
-  return User.create({
-    firstName: 'Test',
-    lastName: nickName,
-    nickName,
-    email: `${nickName}@example.com`,
-    password: 'correct-horse',
-  })
-}
-
-async function makeChannel(
-  admin: User,
-  name: string,
-  type: 'public' | 'private' = 'public',
-  idleDays = 0
-) {
-  const channel = await Channel.create({
-    name,
-    type,
-    adminId: admin.id,
-    lastMessageAt: DateTime.now().minus({ days: idleDays }),
-  })
-  await channel.related('members').attach({ [admin.id]: { last_read_at: DateTime.now() } })
-  return channel
-}
-
-async function invite(channel: Channel, user: User, invitedBy: User) {
-  await db.table('channel_invitations').insert({
-    channel_id: channel.id,
-    user_id: user.id,
-    invited_by_id: invitedBy.id,
-    created_at: new Date(),
-  })
-}
 
 function names(body: unknown): string[] {
   const { data } = body as { data: { name: string }[] }
@@ -47,9 +11,7 @@ function names(body: unknown): string[] {
 
 test.group('channels', (group) => {
   group.each.setup(async () => {
-    await db.rawQuery(
-      'TRUNCATE users, auth_access_tokens, rate_limits, channels, channel_members, channel_invitations RESTART IDENTITY CASCADE'
-    )
+    await truncateAll()
     await limiter.clear()
   })
 
@@ -61,14 +23,14 @@ test.group('channels', (group) => {
       .loginAs(ada)
       .json({ name: 'General', type: 'private' })
     created.assertStatus(201)
-    assert.equal(created.body().data.name, 'general')
-    assert.equal(created.body().data.role, 'admin')
+    assert.equal(bodyOf(created).data.name, 'general')
+    assert.equal(bodyOf(created).data.role, 'admin')
 
     const list = await client.get('/api/v1/channels').loginAs(ada)
     list.assertStatus(200)
-    assert.deepEqual(names(list.body()), ['general'])
-    assert.equal(list.body().data[0].type, 'private')
-    assert.equal(list.body().data[0].role, 'admin')
+    assert.deepEqual(names(bodyOf(list)), ['general'])
+    assert.equal(bodyOf(list).data[0].type, 'private')
+    assert.equal(bodyOf(list).data[0].role, 'admin')
   })
 
   test('rejects duplicate and invalid channel names', async ({ client, assert }) => {
@@ -80,7 +42,7 @@ test.group('channels', (group) => {
       .loginAs(ada)
       .json({ name: 'general', type: 'public' })
     duplicate.assertStatus(422)
-    assert.equal(duplicate.body().errors[0].field, 'name')
+    assert.equal(bodyOf(duplicate).errors[0].field, 'name')
 
     const invalid = await client
       .post('/api/v1/channels')
@@ -108,7 +70,7 @@ test.group('channels', (group) => {
     await makeChannel(bob, 'secret', 'private')
 
     const list = await client.get('/api/v1/channels').loginAs(ada)
-    assert.deepEqual(names(list.body()), ['alpha'])
+    assert.deepEqual(names(bodyOf(list)), ['alpha'])
   })
 
   test('join creates a missing channel and joins a public one', async ({ client, assert }) => {
@@ -120,14 +82,14 @@ test.group('channels', (group) => {
       .loginAs(ada)
       .json({ name: 'lobby', type: 'public' })
     created.assertStatus(201)
-    assert.equal(created.body().data.role, 'admin')
+    assert.equal(bodyOf(created).data.role, 'admin')
 
     const joined = await client
       .post('/api/v1/channels/join')
       .loginAs(bob)
       .json({ name: 'lobby', type: 'public' })
     joined.assertStatus(200)
-    assert.equal(joined.body().data.role, 'member')
+    assert.equal(bodyOf(joined).data.role, 'member')
 
     const again = await client
       .post('/api/v1/channels/join')
@@ -136,7 +98,7 @@ test.group('channels', (group) => {
     again.assertStatus(200)
 
     const list = await client.get('/api/v1/channels').loginAs(bob)
-    assert.deepEqual(names(list.body()), ['lobby'])
+    assert.deepEqual(names(bodyOf(list)), ['lobby'])
   })
 
   test('join refuses a private channel without an invitation', async ({ client }) => {
@@ -164,7 +126,7 @@ test.group('channels', (group) => {
     response.assertStatus(200)
 
     const invitations = await client.get('/api/v1/invitations').loginAs(bob)
-    assert.lengthOf(invitations.body().data, 0)
+    assert.lengthOf(bodyOf(invitations).data, 0)
   })
 
   test('a member can leave and the channel leaves their list', async ({ client, assert }) => {
@@ -177,9 +139,9 @@ test.group('channels', (group) => {
     leave.assertStatus(204)
 
     const bobList = await client.get('/api/v1/channels').loginAs(bob)
-    assert.lengthOf(bobList.body().data, 0)
+    assert.lengthOf(bodyOf(bobList).data, 0)
     const adaList = await client.get('/api/v1/channels').loginAs(ada)
-    assert.deepEqual(names(adaList.body()), ['room'])
+    assert.deepEqual(names(bodyOf(adaList)), ['room'])
   })
 
   test('the admin leaving deletes the channel for everyone', async ({ client, assert }) => {
@@ -192,7 +154,7 @@ test.group('channels', (group) => {
     leave.assertStatus(204)
 
     const bobList = await client.get('/api/v1/channels').loginAs(bob)
-    assert.lengthOf(bobList.body().data, 0)
+    assert.lengthOf(bodyOf(bobList).data, 0)
   })
 
   test('leaving a channel you are not in is a 404', async ({ client }) => {
@@ -232,8 +194,8 @@ test.group('channels', (group) => {
 
     const pending = await client.get('/api/v1/invitations').loginAs(bob)
     pending.assertStatus(200)
-    assert.lengthOf(pending.body().data, 2)
-    assert.equal(pending.body().data[0].invitedBy, 'ada')
+    assert.lengthOf(bodyOf(pending).data, 2)
+    assert.equal(bodyOf(pending).data[0].invitedBy, 'ada')
 
     const accept = await client.post('/api/v1/invitations/vault/accept').loginAs(bob)
     accept.assertStatus(204)
@@ -241,9 +203,9 @@ test.group('channels', (group) => {
     decline.assertStatus(204)
 
     const list = await client.get('/api/v1/channels').loginAs(bob)
-    assert.deepEqual(names(list.body()), ['vault'])
+    assert.deepEqual(names(bodyOf(list)), ['vault'])
     const after = await client.get('/api/v1/invitations').loginAs(bob)
-    assert.lengthOf(after.body().data, 0)
+    assert.lengthOf(bodyOf(after).data, 0)
 
     const stale = await client.post('/api/v1/invitations/vault/accept').loginAs(bob)
     stale.assertStatus(404)
@@ -259,13 +221,13 @@ test.group('channels', (group) => {
     await makeChannel(ada, 'fresh', 'public', 29)
 
     const list = await client.get('/api/v1/channels').loginAs(ada)
-    assert.deepEqual(names(list.body()), ['fresh'])
+    assert.deepEqual(names(bodyOf(list)), ['fresh'])
 
     const reused = await client
       .post('/api/v1/channels')
       .loginAs(bob)
       .json({ name: 'stale', type: 'private' })
     reused.assertStatus(201)
-    assert.equal(reused.body().data.type, 'private')
+    assert.equal(bodyOf(reused).data.type, 'private')
   })
 })
