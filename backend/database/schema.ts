@@ -75,6 +75,21 @@ export class ChannelSchema extends BaseModel {
   declare type: 'public' | 'private'
 }
 
+export class MessageSchema extends BaseModel {
+  static $columns = ['channelId', 'content', 'createdAt', 'id', 'userId'] as const
+  $columns = MessageSchema.$columns
+  @column()
+  declare channelId: number
+  @column()
+  declare content: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare userId: number
+}
+
 export class RateLimitSchema extends BaseModel {
   static $columns = ['expire', 'key', 'points'] as const
   $columns = RateLimitSchema.$columns
