@@ -1,6 +1,7 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
+import * as channelApi from '@/services/channel-api';
 import * as mockChannels from '@/services/mock-channels';
 import { useAuthStore } from '@/stores/auth-store';
 import type {
@@ -35,17 +36,33 @@ export const useChannelStore = defineStore('channels', () => {
         : mockChannels.listMembers(auth.profile.nickName, membersOf);
   }
 
-  function load(): void {
-    if (auth.profile === null) {
-      channels.value = [];
-      invitations.value = [];
-      members.value = [];
+  async function load(): Promise<void> {
+    const me = auth.profile?.nickName;
+    if (me === undefined) {
+      reset();
       return;
     }
 
-    channels.value = mockChannels.listChannels(auth.profile.nickName);
-    invitations.value = mockChannels.listInvitations(auth.profile.nickName);
+    try {
+      const [joined, pending] = await Promise.all([
+        channelApi.fetchChannels(),
+        channelApi.fetchInvitations(me),
+      ]);
+
+      if (auth.profile?.nickName !== me) return;
+      channels.value = joined;
+      invitations.value = pending;
+    } catch {
+      return;
+    }
+
     refreshMembers();
+  }
+
+  function reset(): void {
+    channels.value = [];
+    invitations.value = [];
+    members.value = [];
   }
 
   function loadMembers(channelName: string): void {
@@ -57,53 +74,63 @@ export const useChannelStore = defineStore('channels', () => {
     return channels.value.find((channel) => channel.name === channelName);
   }
 
-  function runAsUser(action: (nickName: string) => string | null): string | null {
+  async function runRemote(action: () => Promise<string | null>): Promise<string | null> {
     if (auth.profile === null) return 'Sign in to manage channels.';
 
-    const error = action(auth.profile.nickName);
-    load();
+    const error = await action();
+    await load();
     return error;
   }
 
-  function create(channelName: string, visibility: ChannelVisibility): string | null {
-    return runAsUser((nickName) => mockChannels.createChannel(nickName, channelName, visibility));
+  function runMock(action: (nickName: string) => string | null): string | null {
+    if (auth.profile === null) return 'Sign in to manage channels.';
+
+    const error = action(auth.profile.nickName);
+    refreshMembers();
+    return error;
   }
 
-  function join(channelName: string, visibility: ChannelVisibility): string | null {
-    return runAsUser((nickName) => mockChannels.joinChannel(nickName, channelName, visibility));
+  function create(channelName: string, visibility: ChannelVisibility): Promise<string | null> {
+    return runRemote(() => channelApi.createChannel(channelName, visibility));
+  }
+
+  function join(channelName: string, visibility: ChannelVisibility): Promise<string | null> {
+    return runRemote(() => channelApi.joinChannel(channelName, visibility));
   }
 
   function invite(channelName: string, target: string): string | null {
-    return runAsUser((nickName) => mockChannels.inviteMember(nickName, channelName, target));
+    return runMock((nickName) => mockChannels.inviteMember(nickName, channelName, target));
   }
 
   function revoke(channelName: string, target: string): string | null {
-    return runAsUser((nickName) => mockChannels.revokeMember(nickName, channelName, target));
+    return runMock((nickName) => mockChannels.revokeMember(nickName, channelName, target));
   }
 
   function kick(channelName: string, target: string): KickResult {
     if (auth.profile === null) return { ok: false, error: 'Sign in to manage channels.' };
 
     const result = mockChannels.kickMember(auth.profile.nickName, channelName, target);
-    load();
+    refreshMembers();
     return result;
   }
 
-  function leave(channelName: string): string | null {
-    return runAsUser((nickName) => mockChannels.leaveChannel(nickName, channelName));
+  function leave(channelName: string): Promise<string | null> {
+    return runRemote(() => channelApi.leaveChannel(channelName));
   }
 
-  function remove(channelName: string): string | null {
-    return runAsUser((nickName) => mockChannels.deleteChannel(nickName, channelName));
+  function remove(channelName: string): Promise<string | null> {
+    return runRemote(() => channelApi.deleteChannel(channelName));
   }
 
-  function acceptInvitation(channelName: string): string | null {
-    return runAsUser((nickName) => mockChannels.acceptInvitation(nickName, channelName));
+  function acceptInvitation(channelName: string): Promise<string | null> {
+    return runRemote(() => channelApi.acceptInvitation(channelName));
   }
 
-  function declineInvitation(channelName: string): string | null {
-    return runAsUser((nickName) => mockChannels.declineInvitation(nickName, channelName));
+  function declineInvitation(channelName: string): Promise<string | null> {
+    return runRemote(() => channelApi.declineInvitation(channelName));
   }
+
+  watch(() => auth.profile?.nickName, reset);
 
   return {
     channels,

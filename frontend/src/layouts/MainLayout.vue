@@ -139,6 +139,6 @@ onBeforeUnmount(() => {
   if (incomingTimer !== undefined) clearInterval(incomingTimer);
 });
 
-channels.load();
+void channels.load();
 channels.loadMembers(activeName.value);
 </script>

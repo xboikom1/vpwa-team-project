@@ -176,7 +176,7 @@ function onKeydown(event: KeyboardEvent): void {
     if (suggestion === undefined) return;
     event.preventDefault();
     const canRunImmediately = selectSuggestion(suggestion.name);
-    if (event.key === 'Enter' && canRunImmediately) submit();
+    if (event.key === 'Enter' && canRunImmediately) void submit();
   }
 }
 
@@ -199,9 +199,9 @@ function exit(error: string | null, success: string): boolean {
   return report(error, success);
 }
 
-function join(name: string, visibility: ChannelVisibility): boolean {
+async function join(name: string, visibility: ChannelVisibility): Promise<boolean> {
   const wasMember = channels.findChannel(name) !== undefined;
-  const error = channels.join(name, visibility);
+  const error = await channels.join(name, visibility);
   if (error !== null) return fail(error);
 
   void router.push({ name: 'channel', params: { channelName: name } });
@@ -219,9 +219,9 @@ function kick(current: JoinedChannel, nickName: string): boolean {
   return done(`Kick vote for @${nickName} counted (${result.votes}/${KICK_VOTES_TO_BAN}).`);
 }
 
-function run(input: CommandInput): boolean {
+async function run(input: CommandInput): Promise<boolean> {
   if (input.kind === 'error') return fail(input.message);
-  if (input.kind === 'join') return join(input.channelName, input.visibility);
+  if (input.kind === 'join') return await join(input.channelName, input.visibility);
 
   const current = channel.value;
   if (current === undefined) {
@@ -250,11 +250,11 @@ function run(input: CommandInput): boolean {
       return kick(current, input.nickName);
 
     case 'quit':
-      return exit(channels.remove(current.name), `Deleted #${current.name}.`);
+      return exit(await channels.remove(current.name), `Deleted #${current.name}.`);
 
     case 'cancel':
       return exit(
-        channels.leave(current.name),
+        await channels.leave(current.name),
         current.role === 'admin' ? `Left and deleted #${current.name}.` : `Left #${current.name}.`,
       );
 
@@ -264,11 +264,11 @@ function run(input: CommandInput): boolean {
   }
 }
 
-function submit(): void {
+async function submit(): Promise<void> {
   const input = parseInput(text.value);
   if (input.kind === 'message' && input.text === '') return;
 
-  if (run(input)) text.value = '';
+  if (await run(input)) text.value = '';
   inputRef.value?.focus();
 }
 </script>

@@ -92,7 +92,7 @@ export const useMessageStore = defineStore('messages', () => {
 
       offlineSince = null;
       open(openChannel);
-      channels.load();
+      void channels.load();
     },
   );
 

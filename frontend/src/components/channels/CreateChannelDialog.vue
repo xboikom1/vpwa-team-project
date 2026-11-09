@@ -57,7 +57,9 @@
 
       <div class="rl-dialog__actions">
         <button class="rl-btn" type="button" @click="onDialogCancel">Cancel</button>
-        <button class="rl-btn rl-btn--primary" type="submit">Create channel</button>
+        <button class="rl-btn rl-btn--primary" type="submit" :disabled="pending">
+          Create channel
+        </button>
       </div>
     </form>
   </q-dialog>
@@ -81,6 +83,7 @@ const channels = useChannelStore();
 const name = ref('');
 const visibility = ref<ChannelVisibility>('public');
 const error = ref('');
+const pending = ref(false);
 
 const nameFieldRef = useTemplateRef<InstanceType<typeof AppField>>('nameField');
 
@@ -89,8 +92,13 @@ function update(value: string): void {
   error.value = '';
 }
 
-function submit(): void {
-  const failure = validateChannelName(name.value) ?? channels.create(name.value, visibility.value);
+async function submit(): Promise<void> {
+  if (pending.value) return;
+
+  pending.value = true;
+  const failure =
+    validateChannelName(name.value) ?? (await channels.create(name.value, visibility.value));
+  pending.value = false;
 
   if (failure !== null) {
     error.value = failure;

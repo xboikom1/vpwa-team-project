@@ -127,10 +127,14 @@ function confirmLeave(channel: JoinedChannel): void {
       danger: channel.role === 'admin',
     },
   }).onOk(() => {
-    const error = channels.leave(channel.name);
-    if (error !== null) return showError(error);
-    afterRemoval(channel.name);
+    void leave(channel);
   });
+}
+
+async function leave(channel: JoinedChannel): Promise<void> {
+  const error = await channels.leave(channel.name);
+  if (error !== null) return showError(error);
+  afterRemoval(channel.name);
 }
 
 function confirmDelete(channel: JoinedChannel): void {
@@ -143,20 +147,24 @@ function confirmDelete(channel: JoinedChannel): void {
       danger: true,
     },
   }).onOk(() => {
-    const error = channels.remove(channel.name);
-    if (error !== null) return showError(error);
-    afterRemoval(channel.name);
+    void remove(channel);
   });
 }
 
-function accept(invitation: PendingInvitation): void {
-  const error = channels.acceptInvitation(invitation.channelName);
+async function remove(channel: JoinedChannel): Promise<void> {
+  const error = await channels.remove(channel.name);
+  if (error !== null) return showError(error);
+  afterRemoval(channel.name);
+}
+
+async function accept(invitation: PendingInvitation): Promise<void> {
+  const error = await channels.acceptInvitation(invitation.channelName);
   if (error !== null) return showError(error);
   openChannel(invitation.channelName);
 }
 
-function decline(invitation: PendingInvitation): void {
-  const error = channels.declineInvitation(invitation.channelName);
+async function decline(invitation: PendingInvitation): Promise<void> {
+  const error = await channels.declineInvitation(invitation.channelName);
   if (error !== null) showError(error);
 }
 </script>
