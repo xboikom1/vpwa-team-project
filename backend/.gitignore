@@ -4,6 +4,7 @@ build
 tmp/*
 !tmp/.gitkeep
 
+.adonisjs
 # Secrets
 .env
 .env.local
