@@ -26,6 +26,32 @@ router
       })
       .prefix('auth')
       .as('auth')
+
+    router
+      .group(() => {
+        router
+          .group(() => {
+            router.get('/', [controllers.Channels, 'index']).as('index')
+            router.post('/', [controllers.Channels, 'store']).as('store')
+            router.post('join', [controllers.Channels, 'join']).as('join')
+            router.delete(':name', [controllers.Channels, 'destroy']).as('destroy')
+            router
+              .delete(':name/membership', [controllers.ChannelMemberships, 'destroy'])
+              .as('leave')
+          })
+          .prefix('channels')
+          .as('channels')
+
+        router
+          .group(() => {
+            router.get('/', [controllers.Invitations, 'index']).as('index')
+            router.post(':name/accept', [controllers.Invitations, 'accept']).as('accept')
+            router.delete(':name', [controllers.Invitations, 'decline']).as('decline')
+          })
+          .prefix('invitations')
+          .as('invitations')
+      })
+      .use(middleware.auth())
   })
   .prefix('/api/v1')
   .use(throttle)
