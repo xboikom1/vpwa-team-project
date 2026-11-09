@@ -32,6 +32,64 @@ export class AuthAccessTokenSchema extends BaseModel {
   declare updatedAt: DateTime | null
 }
 
+export class ChannelInvitationSchema extends BaseModel {
+  static $columns = ['channelId', 'createdAt', 'invitedById', 'userId'] as const
+  $columns = ChannelInvitationSchema.$columns
+  @column({ isPrimary: true })
+  declare channelId: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare invitedById: number
+  @column()
+  declare userId: number
+}
+
+export class ChannelMemberSchema extends BaseModel {
+  static $columns = ['channelId', 'joinedAt', 'lastReadAt', 'userId'] as const
+  $columns = ChannelMemberSchema.$columns
+  @column({ isPrimary: true })
+  declare channelId: number
+  @column.dateTime()
+  declare joinedAt: DateTime
+  @column.dateTime()
+  declare lastReadAt: DateTime
+  @column()
+  declare userId: number
+}
+
+export class ChannelSchema extends BaseModel {
+  static $columns = ['adminId', 'createdAt', 'id', 'lastMessageAt', 'name', 'type'] as const
+  $columns = ChannelSchema.$columns
+  @column()
+  declare adminId: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column.dateTime()
+  declare lastMessageAt: DateTime
+  @column()
+  declare name: string
+  @column()
+  declare type: 'public' | 'private'
+}
+
+export class MessageSchema extends BaseModel {
+  static $columns = ['channelId', 'content', 'createdAt', 'id', 'userId'] as const
+  $columns = MessageSchema.$columns
+  @column()
+  declare channelId: number
+  @column()
+  declare content: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare userId: number
+}
+
 export class RateLimitSchema extends BaseModel {
   static $columns = ['expire', 'key', 'points'] as const
   $columns = RateLimitSchema.$columns

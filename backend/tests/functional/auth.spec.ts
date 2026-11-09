@@ -11,6 +11,11 @@ const VALID = {
   password: 'correct-horse',
 }
 
+function errorFields(body: unknown): string[] {
+  const { errors } = body as { errors: { field: string }[] }
+  return errors.map((error) => error.field)
+}
+
 test.group('auth', (group) => {
   group.each.setup(async () => {
     await db.rawQuery('TRUNCATE users, auth_access_tokens, rate_limits RESTART IDENTITY CASCADE')
@@ -47,13 +52,13 @@ test.group('auth', (group) => {
       .post('/api/v1/auth/register')
       .json({ ...VALID, email: 'other@example.com' })
     nick.assertStatus(422)
-    assert.equal(nick.body().errors[0].field, 'nickName')
+    assert.equal(errorFields(nick.body())[0], 'nickName')
 
     const mail = await client
       .post('/api/v1/auth/register')
       .json({ ...VALID, nickName: 'other', email: 'ADA@example.com' })
     mail.assertStatus(422)
-    assert.equal(mail.body().errors[0].field, 'email')
+    assert.equal(errorFields(mail.body())[0], 'email')
   })
 
   test('rejects invalid registration input', async ({ client, assert }) => {
@@ -62,8 +67,7 @@ test.group('auth', (group) => {
       .json({ ...VALID, nickName: 'bad nick!', password: 'short' })
 
     response.assertStatus(422)
-    const fields = response.body().errors.map((error: { field: string }) => error.field)
-    assert.includeMembers(fields, ['nickName', 'password'])
+    assert.includeMembers(errorFields(response.body()), ['nickName', 'password'])
   })
 
   test('logs in with nickname, @nickname or email', async ({ client }) => {

@@ -86,7 +86,8 @@ function scrollToBottom(): void {
 }
 
 async function openChannel(name: string): Promise<void> {
-  messages.open(name);
+  await messages.open(name);
+  if (channelName !== name) return;
   markLatestSeen();
   visibleStart.value = Math.max(0, messages.messages.length - PAGE_SIZE);
   await nextTick();
@@ -134,5 +135,5 @@ watch(
 );
 
 onMounted(scrollToBottom);
-onBeforeUnmount(() => messages.open(''));
+onBeforeUnmount(() => messages.close());
 </script>

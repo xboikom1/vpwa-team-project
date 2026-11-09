@@ -2,12 +2,12 @@
 
 Chatflow is an IRC-style team chat application with a Quasar frontend and an AdonisJS backend. The demo workspace is called Northwind.
 
-Authentication (registration, login, logout) is served by the backend. Channels, messages, and typing activity are still in-memory mock services in the frontend.
+Authentication, the channel list (create, join, leave, delete, invitations, 30-day inactivity cleanup), and messages (send, history, unread counts, live delivery) are served by the backend. Member lists, kick/invite/revoke commands, and typing activity are still in-memory mock services in the frontend.
 
 ## Stack and libraries
 
 - Vue and TypeScript
-- AdonisJS, Lucid ORM, VineJS validation, access-token auth, and rate limiting (`backend`)
+- AdonisJS, Lucid ORM, VineJS validation, access-token auth, rate limiting, and Transmit (server-sent events) for live messages (`backend`)
 - PostgreSQL
 - Quasar for UI components, dialogs, and notifications
 - Pinia for state management

@@ -54,6 +54,7 @@ export default defineConfig({
     () => import('@adonisjs/auth/auth_provider'),
     () => import('#providers/api_provider'),
     () => import('@adonisjs/limiter/limiter_provider'),
+    () => import('@adonisjs/transmit/transmit_provider'),
   ],
 
   /*
@@ -67,6 +68,7 @@ export default defineConfig({
   preloads: [
     () => import('#start/routes'),
     () => import('#start/kernel'),
+    () => import('#start/transmit'),
     () => import('#start/validator'),
   ],
 

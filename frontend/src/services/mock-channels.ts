@@ -5,11 +5,8 @@ import type {
   ChannelMember,
   ChannelVisibility,
   Invitation,
-  JoinedChannel,
   KickResult,
   KickVote,
-  Message,
-  PendingInvitation,
 } from '@/types/types';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -23,7 +20,6 @@ interface ChannelDb {
   invitations: Invitation[];
   bans: ChannelBan[];
   kickVotes: KickVote[];
-  messages: Message[];
 }
 
 interface SeedChannel {
@@ -32,13 +28,6 @@ interface SeedChannel {
   admin: string;
   members: readonly string[];
   idleDays: number;
-}
-
-interface SeedMessage {
-  channelName: string;
-  author: string;
-  text: string;
-  minutesAgo: number;
 }
 
 const EVERYONE = [
@@ -118,72 +107,10 @@ const SEED_CHANNELS: readonly SeedChannel[] = [
   },
 ];
 
-const SEED_MESSAGES: readonly SeedMessage[] = [
-  {
-    channelName: 'general',
-    author: 'alex',
-    text: 'Morning! Standup moves to 10:30 today.',
-    minutesAgo: 95,
-  },
-  {
-    channelName: 'general',
-    author: 'maya',
-    text: 'Thanks for the heads-up, @alex.',
-    minutesAgo: 90,
-  },
-  {
-    channelName: 'general',
-    author: 'viktor',
-    text: 'FREE crypto giveaway!!! DM me your wallet.',
-    minutesAgo: 40,
-  },
-  {
-    channelName: 'general',
-    author: 'priya',
-    text: '@johndoe can you check the deploy checklist before lunch?',
-    minutesAgo: 25,
-  },
-  {
-    channelName: 'engineering',
-    author: 'ed',
-    text: 'CI is green again after the cache fix.',
-    minutesAgo: 30,
-  },
-  {
-    channelName: 'engineering',
-    author: 'marek',
-    text: 'The migration PR is ready for review, @johndoe.',
-    minutesAgo: 8,
-  },
-];
-
 const SEED_KICK_VOTES: readonly KickVote[] = [
   { channelName: 'general', target: 'viktor', voter: 'kai' },
   { channelName: 'general', target: 'viktor', voter: 'rosa' },
 ];
-
-const HISTORY_AUTHORS = ['alex', 'maya', 'ed', 'priya', 'kai', 'lucia'] as const;
-const HISTORY_TEXTS = [
-  'Sharing a quick update from today.',
-  'I reviewed the latest changes and everything looks good.',
-  'Can someone take a look when they have a moment?',
-  'The next release candidate is ready for testing.',
-  'I added the notes from our last discussion.',
-  'Thanks, I will follow up on this tomorrow.',
-] as const;
-
-const INCOMING_MENTION_CHANCE = 0.25;
-const INCOMING_TEXTS = [
-  'Has anyone seen the latest build results?',
-  'I pushed a small fix, please pull before you continue.',
-  'Lunch in ten minutes, who is in?',
-  'The meeting notes are in the shared folder.',
-  'Can you take a look at this when you have a moment?',
-  'Looks good to me, shipping it.',
-  'I will be offline for an hour this afternoon.',
-] as const;
-
-let lastMessageId = 0;
 
 function ago(ms: number): string {
   return new Date(Date.now() - ms).toISOString();
@@ -196,7 +123,6 @@ function seedDb(): ChannelDb {
     invitations: [],
     bans: [],
     kickVotes: SEED_KICK_VOTES.map((vote) => ({ ...vote })),
-    messages: [],
   };
 
   const createdAt = ago(60 * DAY_MS);
@@ -235,32 +161,6 @@ function seedDb(): ChannelDb {
     createdAt: ago(2 * 60 * 60 * 1000),
   });
 
-  for (let index = 0; index < 75; index += 1) {
-    const author = HISTORY_AUTHORS[index % HISTORY_AUTHORS.length] ?? 'alex';
-    const text = HISTORY_TEXTS[index % HISTORY_TEXTS.length] ?? 'General channel update.';
-    const minutesAgo = (75 - index) * 10 + 100;
-
-    lastMessageId += 1;
-    db.messages.push({
-      id: lastMessageId,
-      channelName: 'general',
-      author,
-      text: `${text} (${index + 1})`,
-      createdAt: ago(minutesAgo * 60 * 1000),
-    });
-  }
-
-  for (const seed of SEED_MESSAGES) {
-    lastMessageId += 1;
-    db.messages.push({
-      id: lastMessageId,
-      channelName: seed.channelName,
-      author: seed.author,
-      text: seed.text,
-      createdAt: ago(seed.minutesAgo * 60 * 1000),
-    });
-  }
-
   return db;
 }
 
@@ -270,7 +170,6 @@ function deleteChannelData(db: ChannelDb, channelName: string): void {
   db.invitations = db.invitations.filter((invitation) => invitation.channelName !== channelName);
   db.bans = db.bans.filter((ban) => ban.channelName !== channelName);
   db.kickVotes = db.kickVotes.filter((vote) => vote.channelName !== channelName);
-  db.messages = db.messages.filter((message) => message.channelName !== channelName);
 }
 
 function isInactive(channel: Channel): boolean {
@@ -332,49 +231,6 @@ function banMember(db: ChannelDb, nickName: string, channelName: string): void {
   db.bans.push({ channelName, nickName });
 }
 
-function pickRandom<T>(items: readonly T[]): T | undefined {
-  return items[Math.floor(Math.random() * items.length)];
-}
-
-function addMessage(db: ChannelDb, author: string, channelName: string, text: string): Message {
-  lastMessageId += 1;
-  const message: Message = {
-    id: lastMessageId,
-    channelName,
-    author,
-    text,
-    createdAt: new Date().toISOString(),
-  };
-
-  db.messages.push(message);
-  markActivity(channelName);
-  return message;
-}
-
-export function listChannels(nickName: string): JoinedChannel[] {
-  const db = loadDb();
-  const joined: JoinedChannel[] = [];
-
-  for (const channel of db.channels) {
-    const member = findMember(db, nickName, channel.name);
-    if (member !== undefined) joined.push({ ...channel, role: member.role });
-  }
-
-  return joined.sort((a, b) => a.name.localeCompare(b.name));
-}
-
-export function listInvitations(nickName: string): PendingInvitation[] {
-  const db = loadDb();
-
-  return db.invitations
-    .filter((invitation) => invitation.nickName === nickName)
-    .map((invitation) => {
-      const channel = db.channels.find((item) => item.name === invitation.channelName);
-      return { ...invitation, visibility: channel?.visibility ?? 'private' };
-    })
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-}
-
 export function listMembers(nickName: string, channelName: string): ChannelMember[] {
   const db = loadDb();
   if (findMember(db, nickName, channelName) === undefined) return [];
@@ -386,69 +242,6 @@ export function listMembers(nickName: string, channelName: string): ChannelMembe
       if (a.role !== b.role) return a.role === 'admin' ? -1 : 1;
       return a.nickName.localeCompare(b.nickName);
     });
-}
-
-export function createChannel(
-  nickName: string,
-  channelName: string,
-  visibility: ChannelVisibility,
-): string | null {
-  const db = loadDb();
-
-  if (db.channels.some((channel) => channel.name === channelName)) {
-    return `#${channelName} already exists. Pick another name.`;
-  }
-
-  const now = new Date().toISOString();
-  db.channels.push({ name: channelName, visibility, createdAt: now, lastActivityAt: now });
-  db.members.push({ channelName, nickName, role: 'admin', joinedAt: now, lastReadAt: now });
-
-  return null;
-}
-
-export function joinChannel(
-  nickName: string,
-  channelName: string,
-  visibility: ChannelVisibility,
-): string | null {
-  const db = loadDb();
-  const channel = findChannel(db, channelName);
-
-  if (channel === undefined) return createChannel(nickName, channelName, visibility);
-  if (findMember(db, nickName, channelName) !== undefined) return null;
-  if (isBanned(db, nickName, channelName)) return `You are banned from #${channelName}.`;
-  if (findInvitation(db, nickName, channelName) !== undefined) {
-    return acceptInvitation(nickName, channelName);
-  }
-  if (channel.visibility === 'private') {
-    return `#${channelName} is private. Ask its admin for an invite.`;
-  }
-
-  const now = new Date().toISOString();
-  db.members.push({ channelName, nickName, role: 'member', joinedAt: now, lastReadAt: now });
-  return null;
-}
-
-export function deleteChannel(nickName: string, channelName: string): string | null {
-  const db = loadDb();
-  const member = findMember(db, nickName, channelName);
-
-  if (member === undefined) return `You are not a member of #${channelName}.`;
-  if (member.role !== 'admin') return `Only the admin can delete #${channelName}.`;
-
-  deleteChannelData(db, channelName);
-  return null;
-}
-
-export function leaveChannel(nickName: string, channelName: string): string | null {
-  const db = loadDb();
-  const member = findMember(db, nickName, channelName);
-
-  if (member === undefined) return `You are not a member of #${channelName}.`;
-  if (member.role === 'admin') return deleteChannel(nickName, channelName);
-
-  db.members = db.members.filter((item) => item !== member);
-  return null;
 }
 
 export function inviteMember(nickName: string, channelName: string, target: string): string | null {
@@ -563,113 +356,4 @@ export function kickMember(nickName: string, channelName: string, target: string
   if (count >= KICK_VOTES_TO_BAN) banMember(db, target, channelName);
 
   return { ok: true, votes: count, banned: count >= KICK_VOTES_TO_BAN };
-}
-
-export function acceptInvitation(nickName: string, channelName: string): string | null {
-  const db = loadDb();
-
-  if (findInvitation(db, nickName, channelName) === undefined) {
-    return `The invitation to #${channelName} is no longer valid.`;
-  }
-
-  removeInvitation(db, nickName, channelName);
-  const now = new Date().toISOString();
-  db.members.push({ channelName, nickName, role: 'member', joinedAt: now, lastReadAt: now });
-
-  return null;
-}
-
-export function declineInvitation(nickName: string, channelName: string): string | null {
-  const db = loadDb();
-  removeInvitation(db, nickName, channelName);
-
-  return null;
-}
-
-export function listMessages(nickName: string, channelName: string): Message[] {
-  const db = loadDb();
-  if (findMember(db, nickName, channelName) === undefined) return [];
-
-  return db.messages
-    .filter((message) => message.channelName === channelName)
-    .map((message) => ({ ...message }));
-}
-
-export function markRead(nickName: string, channelName: string, readAt: string): void {
-  const db = loadDb();
-  const member = findMember(db, nickName, channelName);
-  if (member !== undefined) member.lastReadAt = readAt;
-}
-
-export function countUnread(nickName: string, until: string | null): Record<string, number> {
-  const db = loadDb();
-  const unread: Record<string, number> = {};
-
-  for (const member of db.members) {
-    if (member.nickName !== nickName) continue;
-
-    unread[member.channelName] = db.messages.filter(
-      (message) =>
-        message.channelName === member.channelName &&
-        message.author !== nickName &&
-        message.createdAt > member.lastReadAt &&
-        (until === null || message.createdAt <= until),
-    ).length;
-  }
-
-  return unread;
-}
-
-export function postMessage(nickName: string, channelName: string, text: string): string | null {
-  const db = loadDb();
-
-  if (findMember(db, nickName, channelName) === undefined) {
-    return `Join #${channelName} before sending messages.`;
-  }
-
-  addMessage(db, nickName, channelName, text);
-  return null;
-}
-
-export function receiveTypedMessage(
-  author: string,
-  channelName: string,
-  text: string,
-): Message | null {
-  const db = loadDb();
-  if (findMember(db, author, channelName) === undefined) return null;
-
-  return { ...addMessage(db, author, channelName, text) };
-}
-
-export function receiveSimulatedMessage(
-  nickName: string,
-  openChannel: string,
-  offline: boolean,
-): Message | null {
-  const db = loadDb();
-
-  const joined = db.members.filter(
-    (member) => member.nickName === nickName && (offline || member.channelName !== openChannel),
-  );
-  const channelName = pickRandom(joined)?.channelName;
-  if (channelName === undefined) return null;
-
-  const others = db.members.filter(
-    (member) => member.channelName === channelName && member.nickName !== nickName,
-  );
-  const author = pickRandom(others)?.nickName;
-  const text = pickRandom(INCOMING_TEXTS);
-  if (author === undefined || text === undefined) return null;
-
-  const addressed = Math.random() < INCOMING_MENTION_CHANCE;
-  return { ...addMessage(db, author, channelName, addressed ? `@${nickName} ${text}` : text) };
-}
-
-export function markActivity(channelName: string): void {
-  const db = loadDb();
-  const channel = db.channels.find((item) => item.name === channelName);
-  if (channel === undefined) return;
-
-  channel.lastActivityAt = new Date().toISOString();
 }
