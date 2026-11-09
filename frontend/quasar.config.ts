@@ -45,6 +45,10 @@ export default defineConfig((/* ctx */) => {
       // https://v2.quasar.dev/quasar-cli-vite/page-routing-with-vue-router#filename-based-routing
       // filenameBasedRouting: true,
 
+      defineEnv: {
+        API_URL: process.env.API_URL ?? 'http://localhost:3333/api/v1',
+      },
+
       vueRouterMode: 'hash', // available values: 'hash', 'history'
       // vueRouterBase,
 
