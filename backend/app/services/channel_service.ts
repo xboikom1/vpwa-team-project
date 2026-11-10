@@ -1,12 +1,19 @@
 import ChannelException from '#exceptions/channel_exception'
 import Channel from '#models/channel'
 import type User from '#models/user'
+import RealtimeService from '#services/realtime_service'
+import { inject } from '@adonisjs/core'
 import db from '@adonisjs/lucid/services/db'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import { DateTime } from 'luxon'
 
 type ChannelType = Channel['type']
 type Role = 'admin' | 'member'
+
+/**
+ * Anything that can start a query: the global `db` service or a transaction.
+ */
+export type QueryClient = Pick<TransactionClientContract, 'from' | 'table'>
 
 export interface PendingInvitation {
   channelName: string
@@ -20,7 +27,10 @@ function withRole(channel: Channel, role: Role): Channel {
   return channel
 }
 
+@inject()
 export default class ChannelService {
+  constructor(protected realtime: RealtimeService) {}
+
   async purgeInactive() {
     const limit = DateTime.now().minus({ days: Channel.inactiveAfterDays })
     await Channel.query().where('lastMessageAt', '<', limit.toJSDate()).delete()
@@ -60,26 +70,36 @@ export default class ChannelService {
   async join(user: User, name: string, type: ChannelType) {
     await this.purgeInactive()
 
-    return db.transaction(async (trx) => {
+    const result = await db.transaction(async (trx) => {
       const channel = await Channel.query({ client: trx }).where('name', name).first()
-      if (!channel) return { channel: await this.createRow(trx, user, name, type), created: true }
-
-      const isMember = await this.isMember(trx, channel.id, user.id)
-      if (isMember) {
-        return { channel: withRole(channel, this.roleOf(channel, user)), created: false }
+      if (!channel) {
+        return { channel: await this.createRow(trx, user, name, type), created: true, joined: true }
       }
 
-      const invitation = await trx
-        .from('channel_invitations')
-        .where({ channel_id: channel.id, user_id: user.id })
-        .first()
-      if (!invitation && channel.type === 'private') throw ChannelException.privateChannel(name)
+      if (await this.isMember(trx, channel.id, user.id)) {
+        return {
+          channel: withRole(channel, this.roleOf(channel, user)),
+          created: false,
+          joined: false,
+        }
+      }
+
+      if (await this.isBanned(trx, channel.id, user.id)) throw ChannelException.banned(name)
+
+      const invited = await this.hasInvitation(trx, channel.id, user.id)
+      if (!invited && channel.type === 'private') throw ChannelException.privateChannel(name)
 
       await this.removeInvitation(trx, channel.id, user.id)
       await this.addMember(trx, channel.id, user.id)
 
-      return { channel: withRole(channel, 'member'), created: false }
+      return { channel: withRole(channel, 'member'), created: false, joined: true }
     })
+
+    if (result.joined && !result.created) {
+      await this.realtime.publishMembersChanged(result.channel.id, result.channel.name)
+    }
+
+    return result
   }
 
   async destroy(user: User, name: string) {
@@ -88,7 +108,7 @@ export default class ChannelService {
     const channel = await this.findForMember(user, name)
     if (channel.adminId !== user.id) throw ChannelException.notAdmin(name)
 
-    await channel.delete()
+    await this.deleteChannel(channel, user)
   }
 
   async leave(user: User, name: string) {
@@ -96,11 +116,12 @@ export default class ChannelService {
 
     const channel = await this.findForMember(user, name)
     if (channel.adminId === user.id) {
-      await channel.delete()
+      await this.deleteChannel(channel, user)
       return
     }
 
     await channel.related('members').detach([user.id])
+    await this.realtime.publishMembersChanged(channel.id, channel.name)
   }
 
   async invitations(user: User): Promise<PendingInvitation[]> {
@@ -123,19 +144,18 @@ export default class ChannelService {
   async acceptInvitation(user: User, name: string) {
     await this.purgeInactive()
 
-    await db.transaction(async (trx) => {
-      const channel = await Channel.query({ client: trx }).where('name', name).first()
-      const invitation = channel
-        ? await trx
-            .from('channel_invitations')
-            .where({ channel_id: channel.id, user_id: user.id })
-            .first()
-        : null
-      if (!channel || !invitation) throw ChannelException.invalidInvitation(name)
+    const channel = await db.transaction(async (trx) => {
+      const found = await Channel.query({ client: trx }).where('name', name).first()
+      const invited = found ? await this.hasInvitation(trx, found.id, user.id) : false
+      if (!found || !invited) throw ChannelException.invalidInvitation(name)
+      if (await this.isBanned(trx, found.id, user.id)) throw ChannelException.banned(name)
 
-      await this.removeInvitation(trx, channel.id, user.id)
-      await this.addMember(trx, channel.id, user.id)
+      await this.removeInvitation(trx, found.id, user.id)
+      await this.addMember(trx, found.id, user.id)
+      return found
     })
+
+    await this.realtime.publishMembersChanged(channel.id, channel.name)
   }
 
   async declineInvitation(user: User, name: string) {
@@ -145,12 +165,17 @@ export default class ChannelService {
     await this.removeInvitation(db, channel.id, user.id)
   }
 
-  private roleOf(channel: Channel, user: User): Role {
-    return channel.adminId === user.id ? 'admin' : 'member'
+  async findForMember(user: User, name: string) {
+    const channel = await Channel.findBy('name', name)
+    if (!channel) throw ChannelException.notMember(name)
+
+    if (!(await this.isMember(db, channel.id, user.id))) throw ChannelException.notMember(name)
+
+    return channel
   }
 
-  private async isMember(trx: TransactionClientContract, channelId: number, userId: number) {
-    const row = await trx
+  async isMember(client: QueryClient, channelId: number, userId: number) {
+    const row = await client
       .from('channel_members')
       .where({ channel_id: channelId, user_id: userId })
       .first()
@@ -158,17 +183,52 @@ export default class ChannelService {
     return row !== null
   }
 
-  async findForMember(user: User, name: string) {
-    const channel = await Channel.findBy('name', name)
-    if (!channel) throw ChannelException.notMember(name)
-
-    const row = await db
-      .from('channel_members')
-      .where({ channel_id: channel.id, user_id: user.id })
+  async isBanned(client: QueryClient, channelId: number, userId: number) {
+    const row = await client
+      .from('channel_bans')
+      .where({ channel_id: channelId, user_id: userId })
       .first()
-    if (!row) throw ChannelException.notMember(name)
 
-    return channel
+    return row !== null
+  }
+
+  async hasInvitation(client: QueryClient, channelId: number, userId: number) {
+    const row = await client
+      .from('channel_invitations')
+      .where({ channel_id: channelId, user_id: userId })
+      .first()
+
+    return row !== null
+  }
+
+  async removeInvitation(client: QueryClient, channelId: number, userId: number) {
+    await client
+      .from('channel_invitations')
+      .where({ channel_id: channelId, user_id: userId })
+      .delete()
+  }
+
+  private roleOf(channel: Channel, user: User): Role {
+    return channel.adminId === user.id ? 'admin' : 'member'
+  }
+
+  /**
+   * Deletes the channel and tells everyone who had it in their list
+   * (members and pending invitees), except the user who deleted it.
+   */
+  private async deleteChannel(channel: Channel, actor: User) {
+    const audience = [
+      ...(await this.realtime.memberNicks(channel.id)),
+      ...(await this.realtime.inviteeNicks(channel.id)),
+    ].filter((nickName) => nickName !== actor.nickName)
+
+    await channel.delete()
+
+    this.realtime.toUsers(audience, {
+      type: 'channel.removed',
+      channelName: channel.name,
+      reason: 'deleted',
+    })
   }
 
   private async createRow(
@@ -191,16 +251,5 @@ export default class ChannelService {
     await trx
       .table('channel_members')
       .insert({ channel_id: channelId, user_id: userId, joined_at: now, last_read_at: now })
-  }
-
-  private async removeInvitation(
-    client: Pick<TransactionClientContract, 'from'>,
-    channelId: number,
-    userId: number
-  ) {
-    await client
-      .from('channel_invitations')
-      .where({ channel_id: channelId, user_id: userId })
-      .delete()
   }
 }
