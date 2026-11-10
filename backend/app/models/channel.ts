@@ -5,6 +5,7 @@ import type { BelongsTo, ManyToMany } from '@adonisjs/lucid/types/relations'
 
 export default class Channel extends ChannelSchema {
   static inactiveAfterDays = 30
+  static kickVotesToBan = 3
 
   @belongsTo(() => User, { foreignKey: 'adminId' })
   declare admin: BelongsTo<typeof User>
