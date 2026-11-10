@@ -2,7 +2,7 @@
 
 Chatflow is an IRC-style team chat application with a Quasar frontend and an AdonisJS backend. The demo workspace is called Northwind.
 
-Authentication, the channel list (create, join, leave, delete, invitations, 30-day inactivity cleanup), and messages (send, history, unread counts, live delivery) are served by the backend. Member lists, kick/invite/revoke commands, and typing activity are still in-memory mock services in the frontend.
+Authentication, the channel list (create, join, leave, delete, invitations, 30-day inactivity cleanup), channel commands (`/join`, `/invite`, `/revoke`, `/kick` with vote bans, `/quit`, `/cancel`, `/list`), and messages (send, history, unread counts, live delivery) are served by the backend. Invitations, removals, and member-list changes reach other users live. Typing activity and member presence are still simulated in the frontend.
 
 ## Stack and libraries
 
@@ -68,7 +68,7 @@ npm run lint:check
 
 Use `npm run lint` to format files and apply lint fixes.
 
-Backend checks, run from `backend` (tests need the `chatflow_test` database to exist):
+Backend checks, run from `backend`. Tests use the `chatflow` database from `backend/.env`: they empty its tables and roll back all migrations when they finish, so run `node ace migration:run` and `node ace db:seed` afterwards to restore the demo data.
 
 ```bash
 npm run typecheck
