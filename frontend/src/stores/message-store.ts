@@ -90,7 +90,13 @@ export const useMessageStore = defineStore('messages', () => {
     const nickName = auth.profile?.nickName;
     if (nickName === undefined) return;
 
-    connectRealtime(nickName, { onMessage: receive, onReconnect: () => void refresh() });
+    connectRealtime(nickName, {
+      onMessage: receive,
+      onInvitation: channels.receiveInvitation,
+      onChannelRemoved: channels.receiveRemoval,
+      onMembersChanged: channels.receiveMembersChanged,
+      onReconnect: () => void refresh(),
+    });
   }
 
   function stop(): void {
