@@ -71,7 +71,7 @@ export function parseInput(raw: string): CommandInput {
     case 'invite':
     case 'revoke':
     case 'kick': {
-      const nickName = (args[0] ?? '').replace(/^@/, '');
+      const nickName = (args[0] ?? '').replace(/^@/, '').toLowerCase();
       if (args.length !== 1 || nickName === '') return usage(name);
 
       return { kind: name, nickName };
