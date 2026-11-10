@@ -28,45 +28,15 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from 'vue';
-
-import { useAuthStore } from '@/stores/auth-store';
-import { useChannelStore } from '@/stores/channel-store';
+import { ref, watch } from 'vue';
 
 const { channelName } = defineProps<{
   channelName: string;
 }>();
 
-const auth = useAuthStore();
-const channels = useChannelStore();
-
-const SEND_DELAY_MS = 800;
-
-const DRAFTS = [
-  'Does anyone have time to review the latest changes?',
-  'I am checking the channel notes and will share an update shortly.',
-  'The new version looks good to me. I only found one small issue.',
-  'Can we move tomorrow’s meeting to the afternoon?',
-  'I have finished the task and I am preparing the summary now.',
-] as const;
-
 const typingUser = ref('');
 const draft = ref('');
 const previewOpen = ref(false);
-
-let simulationIndex = 0;
-let startTimer: ReturnType<typeof setTimeout> | undefined;
-let endTimer: ReturnType<typeof setTimeout> | undefined;
-let typingTimer: ReturnType<typeof setInterval> | undefined;
-
-function clearTimers(): void {
-  if (startTimer !== undefined) clearTimeout(startTimer);
-  if (endTimer !== undefined) clearTimeout(endTimer);
-  if (typingTimer !== undefined) clearInterval(typingTimer);
-  startTimer = undefined;
-  endTimer = undefined;
-  typingTimer = undefined;
-}
 
 function resetTyping(): void {
   typingUser.value = '';
@@ -74,54 +44,5 @@ function resetTyping(): void {
   previewOpen.value = false;
 }
 
-function scheduleTyping(delay = 4_000): void {
-  if (channelName === '' || auth.presence === 'offline') return;
-  startTimer = setTimeout(startTyping, delay);
-}
-
-function startTyping(): void {
-  const candidates = channels.members.filter(
-    (member) => member.nickName !== auth.profile?.nickName,
-  );
-
-  if (candidates.length === 0) {
-    scheduleTyping();
-    return;
-  }
-
-  const member = candidates[simulationIndex % candidates.length];
-  const message = DRAFTS[simulationIndex % DRAFTS.length];
-  simulationIndex += 1;
-  if (member === undefined || message === undefined) return;
-
-  typingUser.value = member.nickName;
-  draft.value = '';
-  let characterIndex = 0;
-
-  typingTimer = setInterval(() => {
-    characterIndex += 1;
-    draft.value = message.slice(0, characterIndex);
-
-    if (characterIndex < message.length) return;
-    if (typingTimer !== undefined) clearInterval(typingTimer);
-    typingTimer = undefined;
-
-    endTimer = setTimeout(() => {
-      resetTyping();
-      scheduleTyping(5_000);
-    }, SEND_DELAY_MS);
-  }, 85);
-}
-
-watch(
-  () => [channelName, auth.presence === 'offline'],
-  () => {
-    clearTimers();
-    resetTyping();
-    scheduleTyping(1_200);
-  },
-  { immediate: true },
-);
-
-onBeforeUnmount(clearTimers);
+watch(() => channelName, resetTyping);
 </script>
