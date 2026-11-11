@@ -73,7 +73,6 @@ import { useQuasar } from 'quasar';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { KICK_VOTES_TO_BAN } from '@/services/mock-channels';
 import { useChannelStore } from '@/stores/channel-store';
 import { useMessageStore } from '@/stores/message-store';
 import type { ChannelVisibility, CommandInput, JoinedChannel } from '@/types/types';
@@ -211,12 +210,22 @@ async function join(name: string, visibility: ChannelVisibility): Promise<boolea
   return done(created ? `Created #${name}.` : `Joined #${name}.`);
 }
 
-function kick(current: JoinedChannel, nickName: string): boolean {
-  const result = channels.kick(current.name, nickName);
+async function invite(current: JoinedChannel, nickName: string): Promise<boolean> {
+  const result = await channels.invite(current.name, nickName);
+  if (!result.ok) return fail(result.error);
+  if (result.restored) {
+    return done(`Restored access for @${nickName} and invited them to #${current.name}.`);
+  }
+
+  return done(`Invited @${nickName} to #${current.name}.`);
+}
+
+async function kick(current: JoinedChannel, nickName: string): Promise<boolean> {
+  const result = await channels.kick(current.name, nickName);
   if (!result.ok) return fail(result.error);
   if (result.banned) return done(`@${nickName} is now banned from #${current.name}.`);
 
-  return done(`Kick vote for @${nickName} counted (${result.votes}/${KICK_VOTES_TO_BAN}).`);
+  return done(`Kick vote for @${nickName} counted (${result.votes}/${result.required}).`);
 }
 
 async function run(input: CommandInput): Promise<boolean> {
@@ -235,19 +244,16 @@ async function run(input: CommandInput): Promise<boolean> {
     }
 
     case 'invite':
-      return report(
-        channels.invite(current.name, input.nickName),
-        `Invited @${input.nickName} to #${current.name}.`,
-      );
+      return await invite(current, input.nickName);
 
     case 'revoke':
       return report(
-        channels.revoke(current.name, input.nickName),
+        await channels.revoke(current.name, input.nickName),
         `Removed @${input.nickName} from #${current.name}.`,
       );
 
     case 'kick':
-      return kick(current, input.nickName);
+      return await kick(current, input.nickName);
 
     case 'quit':
       return exit(await channels.remove(current.name), `Deleted #${current.name}.`);
@@ -259,6 +265,7 @@ async function run(input: CommandInput): Promise<boolean> {
       );
 
     case 'list':
+      void channels.loadMembers(current.name);
       emit('list');
       return true;
   }

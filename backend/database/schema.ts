@@ -32,6 +32,17 @@ export class AuthAccessTokenSchema extends BaseModel {
   declare updatedAt: DateTime | null
 }
 
+export class ChannelBanSchema extends BaseModel {
+  static $columns = ['channelId', 'createdAt', 'userId'] as const
+  $columns = ChannelBanSchema.$columns
+  @column({ isPrimary: true })
+  declare channelId: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare userId: number
+}
+
 export class ChannelInvitationSchema extends BaseModel {
   static $columns = ['channelId', 'createdAt', 'invitedById', 'userId'] as const
   $columns = ChannelInvitationSchema.$columns
@@ -43,6 +54,19 @@ export class ChannelInvitationSchema extends BaseModel {
   declare invitedById: number
   @column()
   declare userId: number
+}
+
+export class ChannelKickVoteSchema extends BaseModel {
+  static $columns = ['channelId', 'createdAt', 'targetId', 'voterId'] as const
+  $columns = ChannelKickVoteSchema.$columns
+  @column({ isPrimary: true })
+  declare channelId: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare targetId: number
+  @column()
+  declare voterId: number
 }
 
 export class ChannelMemberSchema extends BaseModel {

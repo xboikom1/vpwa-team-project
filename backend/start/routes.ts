@@ -44,6 +44,14 @@ router
               .use(throttleMessages)
               .as('messages.store')
             router.post(':name/read', [controllers.ChannelReads, 'store']).as('read')
+            router.get(':name/members', [controllers.ChannelMembers, 'index']).as('members.index')
+            router
+              .delete(':name/members/:nickName', [controllers.ChannelMembers, 'destroy'])
+              .as('members.destroy')
+            router
+              .post(':name/invitations', [controllers.ChannelInvitations, 'store'])
+              .as('invitations.store')
+            router.post(':name/kicks', [controllers.ChannelKicks, 'store']).as('kicks.store')
           })
           .prefix('channels')
           .as('channels')

@@ -14,3 +14,9 @@ export const channelValidator = vine.create({
 channelValidator.messagesProvider = new SimpleMessagesProvider({
   'name.regex': 'Use only a-z, 0-9, - and _.',
 })
+
+export const nickNameValidator = vine.create({
+  nickName: vine.string().trim().toLowerCase().minLength(1).maxLength(20),
+})
+
+nickNameValidator.messagesProvider = new SimpleMessagesProvider({}, { nickName: 'nickname' })

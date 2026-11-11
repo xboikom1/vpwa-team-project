@@ -39,18 +39,9 @@ export interface Channel {
 }
 
 export interface ChannelMember {
-  channelName: string;
   nickName: string;
   role: ChannelRole;
   joinedAt: string;
-  lastReadAt: string;
-}
-
-export interface Invitation {
-  channelName: string;
-  nickName: string;
-  invitedBy: string;
-  createdAt: string;
 }
 
 export interface JoinedChannel extends Channel {
@@ -58,23 +49,20 @@ export interface JoinedChannel extends Channel {
   unread: number;
 }
 
-export interface PendingInvitation extends Invitation {
+export interface PendingInvitation {
+  channelName: string;
+  nickName: string;
+  invitedBy: string;
+  createdAt: string;
   visibility: ChannelVisibility;
 }
 
-export interface ChannelBan {
-  channelName: string;
-  nickName: string;
-}
+export type ChannelRemovalReason = 'deleted' | 'revoked' | 'banned';
 
-export interface KickVote {
-  channelName: string;
-  target: string;
-  voter: string;
-}
+export type InviteResult = { ok: true; restored: boolean } | { ok: false; error: string };
 
 export type KickResult =
-  { ok: true; votes: number; banned: boolean } | { ok: false; error: string };
+  { ok: true; votes: number; required: number; banned: boolean } | { ok: false; error: string };
 
 export interface Message {
   id: number;

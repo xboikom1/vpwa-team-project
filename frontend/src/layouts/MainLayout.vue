@@ -119,7 +119,7 @@ function closeMembersOnEscape(event: KeyboardEvent): void {
 
 watch(activeName, (name) => {
   if ($q.screen.lt.md) leftOpen.value = false;
-  channels.loadMembers(name);
+  void channels.loadMembers(name);
 });
 
 watch(activeChannel, (channel) => {
@@ -136,6 +136,6 @@ onBeforeUnmount(() => {
   messages.stop();
 });
 
+void channels.loadMembers(activeName.value);
 void channels.load();
-channels.loadMembers(activeName.value);
 </script>

@@ -1,16 +1,26 @@
+import { Notify } from 'quasar';
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 
 import * as channelApi from '@/services/channel-api';
-import * as mockChannels from '@/services/mock-channels';
 import { useAuthStore } from '@/stores/auth-store';
 import type {
   ChannelMember,
+  ChannelRemovalReason,
   ChannelVisibility,
+  InviteResult,
   JoinedChannel,
   KickResult,
   PendingInvitation,
 } from '@/types/types';
+
+const SIGN_IN = 'Sign in to manage channels.';
+
+const REMOVAL_MESSAGES: Record<ChannelRemovalReason, (channelName: string) => string> = {
+  deleted: (channelName) => `#${channelName} was deleted by its admin.`,
+  revoked: (channelName) => `You were removed from #${channelName}.`,
+  banned: (channelName) => `You were banned from #${channelName}.`,
+};
 
 export const useChannelStore = defineStore('channels', () => {
   const auth = useAuthStore();
@@ -29,11 +39,19 @@ export const useChannelStore = defineStore('channels', () => {
     channels.value.filter((channel) => channel.visibility === 'private'),
   );
 
-  function refreshMembers(): void {
-    members.value =
-      auth.profile === null || membersOf === ''
-        ? []
-        : mockChannels.listMembers(auth.profile.nickName, membersOf);
+  async function refreshMembers(): Promise<void> {
+    const channelName = membersOf;
+    if (auth.profile === null || findChannel(channelName) === undefined) {
+      members.value = [];
+      return;
+    }
+
+    try {
+      const list = await channelApi.fetchMembers(channelName);
+      if (membersOf === channelName) members.value = list;
+    } catch {
+      if (membersOf === channelName) members.value = [];
+    }
   }
 
   async function load(): Promise<void> {
@@ -56,7 +74,7 @@ export const useChannelStore = defineStore('channels', () => {
       return;
     }
 
-    refreshMembers();
+    await refreshMembers();
   }
 
   function reset(): void {
@@ -65,9 +83,9 @@ export const useChannelStore = defineStore('channels', () => {
     members.value = [];
   }
 
-  function loadMembers(channelName: string): void {
+  function loadMembers(channelName: string): Promise<void> {
     membersOf = channelName;
-    refreshMembers();
+    return refreshMembers();
   }
 
   function findChannel(channelName: string): JoinedChannel | undefined {
@@ -85,18 +103,10 @@ export const useChannelStore = defineStore('channels', () => {
   }
 
   async function runRemote(action: () => Promise<string | null>): Promise<string | null> {
-    if (auth.profile === null) return 'Sign in to manage channels.';
+    if (auth.profile === null) return SIGN_IN;
 
     const error = await action();
     await load();
-    return error;
-  }
-
-  function runMock(action: (nickName: string) => string | null): string | null {
-    if (auth.profile === null) return 'Sign in to manage channels.';
-
-    const error = action(auth.profile.nickName);
-    refreshMembers();
     return error;
   }
 
@@ -108,19 +118,24 @@ export const useChannelStore = defineStore('channels', () => {
     return runRemote(() => channelApi.joinChannel(channelName, visibility));
   }
 
-  function invite(channelName: string, target: string): string | null {
-    return runMock((nickName) => mockChannels.inviteMember(nickName, channelName, target));
+  async function invite(channelName: string, target: string): Promise<InviteResult> {
+    if (auth.profile === null) return { ok: false, error: SIGN_IN };
+    return channelApi.inviteMember(channelName, target);
   }
 
-  function revoke(channelName: string, target: string): string | null {
-    return runMock((nickName) => mockChannels.revokeMember(nickName, channelName, target));
+  async function revoke(channelName: string, target: string): Promise<string | null> {
+    if (auth.profile === null) return SIGN_IN;
+
+    const error = await channelApi.revokeMember(channelName, target);
+    if (error === null && membersOf === channelName) await refreshMembers();
+    return error;
   }
 
-  function kick(channelName: string, target: string): KickResult {
-    if (auth.profile === null) return { ok: false, error: 'Sign in to manage channels.' };
+  async function kick(channelName: string, target: string): Promise<KickResult> {
+    if (auth.profile === null) return { ok: false, error: SIGN_IN };
 
-    const result = mockChannels.kickMember(auth.profile.nickName, channelName, target);
-    refreshMembers();
+    const result = await channelApi.kickMember(channelName, target);
+    if (result.ok && result.banned && membersOf === channelName) await refreshMembers();
     return result;
   }
 
@@ -138,6 +153,48 @@ export const useChannelStore = defineStore('channels', () => {
 
   function declineInvitation(channelName: string): Promise<string | null> {
     return runRemote(() => channelApi.declineInvitation(channelName));
+  }
+
+  /**
+   * Live event: someone invited the user. The invite is pinned to the top of the list.
+   */
+  function receiveInvitation(invitation: PendingInvitation): void {
+    invitations.value = [
+      invitation,
+      ...invitations.value.filter((item) => item.channelName !== invitation.channelName),
+    ];
+
+    Notify.create({
+      type: 'info',
+      message: `@${invitation.invitedBy} invited you to #${invitation.channelName}.`,
+    });
+  }
+
+  /**
+   * Live event: the user lost access to a channel (deleted, revoked or banned).
+   */
+  function receiveRemoval(channelName: string, reason: ChannelRemovalReason): void {
+    const wasMember = findChannel(channelName) !== undefined;
+    const wasInvited = invitations.value.some((item) => item.channelName === channelName);
+    if (!wasMember && !wasInvited) return;
+
+    channels.value = channels.value.filter((channel) => channel.name !== channelName);
+    invitations.value = invitations.value.filter((item) => item.channelName !== channelName);
+    if (membersOf === channelName) members.value = [];
+
+    Notify.create({
+      type: 'warning',
+      message: wasMember
+        ? REMOVAL_MESSAGES[reason](channelName)
+        : `Your invitation to #${channelName} was withdrawn.`,
+    });
+  }
+
+  /**
+   * Live event: someone joined or left a channel the user is in.
+   */
+  function receiveMembersChanged(channelName: string): void {
+    if (channelName === membersOf) void refreshMembers();
   }
 
   watch(() => auth.profile?.nickName, reset);
@@ -162,6 +219,9 @@ export const useChannelStore = defineStore('channels', () => {
     remove,
     acceptInvitation,
     declineInvitation,
+    receiveInvitation,
+    receiveRemoval,
+    receiveMembersChanged,
   };
 });
 
