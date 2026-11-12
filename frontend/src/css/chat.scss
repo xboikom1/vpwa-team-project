@@ -188,6 +188,13 @@
     justify-content: flex-end;
   }
 
+  &__loading {
+    display: flex;
+    justify-content: center;
+    padding: var(--space-2) 0;
+    color: var(--text-muted);
+  }
+
   .q-message-container > div {
     max-width: 80%;
   }

@@ -40,7 +40,7 @@
         :class="{ 'is-on': auth.notificationFilter === 'all' }"
         type="button"
         :aria-pressed="auth.notificationFilter === 'all'"
-        @click="auth.setNotificationFilter('all')"
+        @click="changeNotificationFilter('all')"
       >
         All messages
       </button>
@@ -49,7 +49,7 @@
         :class="{ 'is-on': auth.notificationFilter === 'mentions' }"
         type="button"
         :aria-pressed="auth.notificationFilter === 'mentions'"
-        @click="auth.setNotificationFilter('mentions')"
+        @click="changeNotificationFilter('mentions')"
       >
         Mentions only ({{ auth.handle }})
       </button>
@@ -63,18 +63,21 @@
 </template>
 
 <script setup lang="ts">
+import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
 
 import AppAvatar from '@/components/common/AppAvatar.vue';
 import AppIcon from '@/components/common/AppIcon.vue';
+import { requestPermission } from '@/services/notifications';
 import { useAuthStore } from '@/stores/auth-store';
-import type { PresenceStatus, UserProfile } from '@/types/types';
+import type { NotificationFilter, PresenceStatus, UserProfile } from '@/types/types';
 
 const { profile, tap = false } = defineProps<{
   profile: UserProfile;
   tap?: boolean;
 }>();
 
+const $q = useQuasar();
 const auth = useAuthStore();
 const router = useRouter();
 
@@ -89,6 +92,12 @@ const PRESENCE_OPTIONS: readonly { value: PresenceStatus; label: string; hint: s
   { value: 'dnd', label: 'DND', hint: 'Silences everything, mentions included' },
   { value: 'offline', label: 'Offline', hint: 'Appear offline, stay connected' },
 ];
+
+async function changeNotificationFilter(next: NotificationFilter): Promise<void> {
+  requestPermission();
+  const saved = await auth.setNotificationFilter(next);
+  if (!saved) $q.notify({ type: 'negative', message: 'Could not save your notification setting.' });
+}
 
 async function signOut(): Promise<void> {
   await auth.logout();

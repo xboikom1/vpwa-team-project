@@ -1,15 +1,18 @@
 import { ApiError, clearToken, request, setToken } from '@/services/api';
 import type {
+  Account,
   AuthField,
   AuthFailure,
   AuthResult,
   LoginInput,
   RegisterInput,
   UserProfile,
+  UserSettings,
 } from '@/types/types';
 
 interface ServerUser extends UserProfile {
   id: number;
+  notifyMentionsOnly: boolean;
 }
 
 interface SessionPayload {
@@ -38,6 +41,14 @@ function toProfile(user: ServerUser): UserProfile {
   };
 }
 
+function toSettings(user: ServerUser): UserSettings {
+  return { notificationFilter: user.notifyMentionsOnly ? 'mentions' : 'all' };
+}
+
+function toAccount(user: ServerUser): Account {
+  return { profile: toProfile(user), settings: toSettings(user) };
+}
+
 function toFailure(error: unknown, invalidCredentialsMessage?: string): AuthFailure {
   if (!(error instanceof ApiError)) {
     return { field: 'form', message: 'Something went wrong. Try again.' };
@@ -63,7 +74,7 @@ async function openSession(path: string, body: unknown, rejection?: string): Pro
   try {
     const { data } = await request<SessionPayload>(path, { method: 'POST', body });
     setToken(data.token);
-    return { ok: true, profile: toProfile(data.user) };
+    return { ok: true, ...toAccount(data.user) };
   } catch (error) {
     return { ok: false, error: toFailure(error, rejection) };
   }
@@ -87,12 +98,20 @@ export async function logout(): Promise<void> {
   }
 }
 
-export async function fetchCurrentUser(): Promise<UserProfile> {
+export async function fetchCurrentUser(): Promise<Account> {
   try {
     const { data } = await request<MePayload>('/auth/me', { handleUnauthorized: false });
-    return toProfile(data);
+    return toAccount(data);
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) clearToken();
     throw error;
   }
+}
+
+export async function updateSettings(settings: UserSettings): Promise<UserSettings> {
+  const { data } = await request<MePayload>('/auth/me', {
+    method: 'PATCH',
+    body: { notifyMentionsOnly: settings.notificationFilter === 'mentions' },
+  });
+  return toSettings(data);
 }
