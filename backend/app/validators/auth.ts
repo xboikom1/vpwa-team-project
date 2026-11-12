@@ -36,3 +36,7 @@ export const loginValidator = vine.create({
   identifier: vine.string().trim().minLength(1).maxLength(254),
   password: vine.string().minLength(1).maxLength(128),
 })
+
+export const updatePreferencesValidator = vine.create({
+  notifyMentionsOnly: vine.boolean(),
+})
