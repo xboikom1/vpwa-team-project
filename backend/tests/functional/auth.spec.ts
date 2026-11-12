@@ -111,6 +111,31 @@ test.group('auth', (group) => {
     assert.equal(authed.body().data.email, 'ada@example.com')
   })
 
+  test('updates the notification preference of the current user', async ({ client, assert }) => {
+    const registered = await client.post('/api/v1/auth/register').json(VALID)
+    const token = registered.body().data.token
+    assert.isFalse(registered.body().data.user.notifyMentionsOnly)
+
+    const anonymous = await client.patch('/api/v1/auth/me').json({ notifyMentionsOnly: true })
+    anonymous.assertStatus(401)
+
+    const invalid = await client
+      .patch('/api/v1/auth/me')
+      .bearerToken(token)
+      .json({ notifyMentionsOnly: 'sometimes' })
+    invalid.assertStatus(422)
+
+    const updated = await client
+      .patch('/api/v1/auth/me')
+      .bearerToken(token)
+      .json({ notifyMentionsOnly: true })
+    updated.assertStatus(200)
+    assert.isTrue(updated.body().data.notifyMentionsOnly)
+
+    const me = await client.get('/api/v1/auth/me').bearerToken(token)
+    assert.isTrue(me.body().data.notifyMentionsOnly)
+  })
+
   test('logout revokes the token', async ({ client }) => {
     const registered = await client.post('/api/v1/auth/register').json(VALID)
     const token = registered.body().data.token

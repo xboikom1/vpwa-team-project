@@ -10,33 +10,45 @@ function isSupported(): boolean {
   return 'Notification' in window;
 }
 
+function preview(text: string): string {
+  const characters = Array.from(text);
+  if (characters.length <= PREVIEW_LENGTH) return text;
+  return `${characters.slice(0, PREVIEW_LENGTH).join('')}…`;
+}
+
+function shouldNotify(message: Message): boolean {
+  const auth = useAuthStore();
+  const me = auth.profile?.nickName;
+
+  if (me === undefined || message.author === me) return false;
+  if (AppVisibility.appVisible) return false;
+  if (auth.presence !== 'online') return false;
+  if (auth.notificationFilter === 'mentions' && !isMentioned(message.text, me)) return false;
+
+  return isSupported() && Notification.permission === 'granted';
+}
+
 export function requestPermission(): void {
   if (isSupported() && Notification.permission === 'default') {
     void Notification.requestPermission();
   }
 }
 
-export function notifyMessage(message: Message): void {
-  const auth = useAuthStore();
-  const me = auth.profile?.nickName;
+export function notifyMessage(message: Message, onOpen: () => void): void {
+  if (!shouldNotify(message)) return;
 
-  if (me === undefined || message.author === me) return;
-  if (AppVisibility.appVisible) return;
-  if (auth.presence !== 'online') return;
-  if (auth.notificationFilter === 'mentions' && !isMentioned(message.text, me)) return;
-  if (!isSupported() || Notification.permission !== 'granted') return;
-
-  const preview =
-    message.text.length > PREVIEW_LENGTH
-      ? `${message.text.slice(0, PREVIEW_LENGTH)}…`
-      : message.text;
-
-  const notification = new Notification(`@${message.author} in #${message.channelName}`, {
-    body: preview,
-  });
+  let notification: Notification;
+  try {
+    notification = new Notification(`@${message.author} in #${message.channelName}`, {
+      body: preview(message.text),
+    });
+  } catch {
+    return;
+  }
 
   notification.onclick = () => {
     window.focus();
+    onOpen();
     notification.close();
   };
 }

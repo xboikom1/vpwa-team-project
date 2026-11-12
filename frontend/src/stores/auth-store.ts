@@ -4,6 +4,7 @@ import { computed, ref } from 'vue';
 import { getToken } from '@/services/api';
 import * as authApi from '@/services/auth-api';
 import type {
+  Account,
   AuthFailure,
   AuthResult,
   LoginInput,
@@ -32,10 +33,15 @@ export const useAuthStore = defineStore('auth', () => {
     profile.value === null ? '' : profile.value.nickName.slice(0, 1).toUpperCase(),
   );
 
+  function applyAccount(account: Account): void {
+    profile.value = account.profile;
+    notificationFilter.value = account.settings.notificationFilter;
+  }
+
   function openSession(result: AuthResult): AuthFailure | null {
     if (!result.ok) return result.error;
 
-    profile.value = result.profile;
+    applyAccount(result);
     presence.value = 'online';
     return null;
   }
@@ -75,7 +81,7 @@ export const useAuthStore = defineStore('auth', () => {
     restoring ??= (async () => {
       if (getToken() === null) return;
       try {
-        profile.value = await authApi.fetchCurrentUser();
+        applyAccount(await authApi.fetchCurrentUser());
       } catch {
         profile.value = null;
       }
@@ -87,8 +93,18 @@ export const useAuthStore = defineStore('auth', () => {
     presence.value = next;
   }
 
-  function setNotificationFilter(next: NotificationFilter): void {
+  async function setNotificationFilter(next: NotificationFilter): Promise<boolean> {
+    const previous = notificationFilter.value;
+    if (next === previous) return true;
+
     notificationFilter.value = next;
+    try {
+      await authApi.updateSettings({ notificationFilter: next });
+      return true;
+    } catch {
+      if (notificationFilter.value === next) notificationFilter.value = previous;
+      return false;
+    }
   }
 
   return {
