@@ -36,13 +36,13 @@ export const useAuthStore = defineStore('auth', () => {
   function applyAccount(account: Account): void {
     profile.value = account.profile;
     notificationFilter.value = account.settings.notificationFilter;
+    presence.value = account.presence;
   }
 
   function openSession(result: AuthResult): AuthFailure | null {
     if (!result.ok) return result.error;
 
     applyAccount(result);
-    presence.value = 'online';
     return null;
   }
 
@@ -89,7 +89,26 @@ export const useAuthStore = defineStore('auth', () => {
     return restoring;
   }
 
-  function setPresence(next: PresenceStatus): void {
+  /**
+   * Saves the status on the server first and only then switches it locally.
+   * This way, when coming back from `offline`, the channel refresh starts
+   * after the server already delivers messages again, so none are missed.
+   */
+  async function setPresence(next: PresenceStatus): Promise<boolean> {
+    if (next === presence.value) return true;
+
+    try {
+      presence.value = await authApi.updatePresence(next);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Live event: the status was changed in another tab or device.
+   */
+  function applyPresence(next: PresenceStatus): void {
     presence.value = next;
   }
 
@@ -122,6 +141,7 @@ export const useAuthStore = defineStore('auth', () => {
     clearSession,
     restore,
     setPresence,
+    applyPresence,
     setNotificationFilter,
   };
 });

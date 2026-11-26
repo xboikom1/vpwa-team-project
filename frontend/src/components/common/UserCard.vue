@@ -22,7 +22,7 @@
             class="rl-menu__item"
             :class="{ 'is-sel': option.value === auth.presence }"
             type="button"
-            @click="auth.setPresence(option.value)"
+            @click="changePresence(option.value)"
           >
             <i :class="['rl-dot', `rl-dot--${option.value}`]" />
             <span>
@@ -90,8 +90,13 @@ const PRESENCE_LABEL: Record<PresenceStatus, string> = {
 const PRESENCE_OPTIONS: readonly { value: PresenceStatus; label: string; hint: string }[] = [
   { value: 'online', label: 'Online', hint: 'Notifications follow your preference' },
   { value: 'dnd', label: 'DND', hint: 'Silences everything, mentions included' },
-  { value: 'offline', label: 'Offline', hint: 'Appear offline, stay connected' },
+  { value: 'offline', label: 'Offline', hint: 'No new messages until you are back online' },
 ];
+
+async function changePresence(next: PresenceStatus): Promise<void> {
+  const saved = await auth.setPresence(next);
+  if (!saved) $q.notify({ type: 'negative', message: 'Could not change your status.' });
+}
 
 async function changeNotificationFilter(next: NotificationFilter): Promise<void> {
   requestPermission();

@@ -5,6 +5,7 @@ import type {
   AuthFailure,
   AuthResult,
   LoginInput,
+  PresenceStatus,
   RegisterInput,
   UserProfile,
   UserSettings,
@@ -12,6 +13,7 @@ import type {
 
 interface ServerUser extends UserProfile {
   id: number;
+  status: PresenceStatus;
   notifyMentionsOnly: boolean;
 }
 
@@ -46,7 +48,7 @@ function toSettings(user: ServerUser): UserSettings {
 }
 
 function toAccount(user: ServerUser): Account {
-  return { profile: toProfile(user), settings: toSettings(user) };
+  return { profile: toProfile(user), settings: toSettings(user), presence: user.status };
 }
 
 function toFailure(error: unknown, invalidCredentialsMessage?: string): AuthFailure {
@@ -114,4 +116,12 @@ export async function updateSettings(settings: UserSettings): Promise<UserSettin
     body: { notifyMentionsOnly: settings.notificationFilter === 'mentions' },
   });
   return toSettings(data);
+}
+
+export async function updatePresence(presence: PresenceStatus): Promise<PresenceStatus> {
+  const { data } = await request<MePayload>('/auth/me', {
+    method: 'PATCH',
+    body: { status: presence },
+  });
+  return data.status;
 }
