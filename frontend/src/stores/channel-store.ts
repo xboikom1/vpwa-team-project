@@ -12,6 +12,7 @@ import type {
   JoinedChannel,
   KickResult,
   PendingInvitation,
+  PresenceStatus,
 } from '@/types/types';
 
 const SIGN_IN = 'Sign in to manage channels.';
@@ -197,6 +198,14 @@ export const useChannelStore = defineStore('channels', () => {
     if (channelName === membersOf) void refreshMembers();
   }
 
+  /**
+   * Live event: a user who shares a channel with us changed their status.
+   */
+  function receiveStatus(nickName: string, presence: PresenceStatus): void {
+    const member = members.value.find((item) => item.nickName === nickName);
+    if (member !== undefined) member.presence = presence;
+  }
+
   watch(() => auth.profile?.nickName, reset);
 
   return {
@@ -222,6 +231,7 @@ export const useChannelStore = defineStore('channels', () => {
     receiveInvitation,
     receiveRemoval,
     receiveMembersChanged,
+    receiveStatus,
   };
 });
 

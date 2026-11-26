@@ -7,6 +7,7 @@ import type {
   JoinedChannel,
   KickResult,
   PendingInvitation,
+  PresenceStatus,
 } from '@/types/types';
 
 interface ServerChannel {
@@ -28,6 +29,7 @@ export interface ServerInvitation {
 interface ServerMember {
   nickName: string;
   role: ChannelRole;
+  status: PresenceStatus;
   joinedAt: string;
 }
 
@@ -91,6 +93,7 @@ export async function fetchMembers(name: string): Promise<ChannelMember[]> {
   return data.map((member) => ({
     nickName: member.nickName,
     role: member.role,
+    presence: member.status,
     joinedAt: member.joinedAt,
   }));
 }
