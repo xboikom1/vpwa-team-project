@@ -1,5 +1,11 @@
 import { middleware } from '#start/kernel'
-import { throttle, throttleLogin, throttleMessages, throttleRegister } from '#start/limiter'
+import {
+  throttle,
+  throttleLogin,
+  throttleMessages,
+  throttleRegister,
+  throttleTyping,
+} from '#start/limiter'
 import router from '@adonisjs/core/services/router'
 import { controllers } from '#generated/controllers'
 
@@ -70,3 +76,12 @@ router
   })
   .prefix('/api/v1')
   .use(throttle)
+
+/**
+ * Live drafts ("Ed is typing"). Kept out of the global limiter above because
+ * a draft is sent on every change while typing; it has its own per-user limit.
+ */
+router
+  .post('/api/v1/channels/:name/typing', [controllers.ChannelTyping, 'store'])
+  .use([middleware.auth(), throttleTyping])
+  .as('channels.typing')
