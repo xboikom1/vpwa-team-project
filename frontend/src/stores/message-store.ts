@@ -9,11 +9,13 @@ import { notifyMessage } from '@/services/notifications';
 import { connectRealtime, disconnectRealtime } from '@/services/realtime';
 import { useAuthStore } from '@/stores/auth-store';
 import { useChannelStore } from '@/stores/channel-store';
+import { useTypingStore } from '@/stores/typing-store';
 import type { Message } from '@/types/types';
 
 export const useMessageStore = defineStore('messages', () => {
   const auth = useAuthStore();
   const channels = useChannelStore();
+  const typing = useTypingStore();
   const router = useRouter();
 
   const messages = ref<Message[]>([]);
@@ -38,12 +40,17 @@ export const useMessageStore = defineStore('messages', () => {
     const newestId = messages.value.at(-1)?.id ?? 0;
     const oldestInPage = page.messages[0]?.id;
 
-    if (oldestInPage !== undefined && oldestInPage <= newestId) {
+    // Refresh of an already loaded list that overlaps the page: only add what is new.
+    if (loaded.value && oldestInPage !== undefined && oldestInPage <= newestId) {
       messages.value.push(...page.messages.filter((message) => message.id > newestId));
       return;
     }
 
-    messages.value = page.messages;
+    // First load (or a gap): take the page and keep live messages that arrived
+    // during the request and are newer than the page.
+    const newestInPage = page.messages.at(-1)?.id ?? 0;
+    const live = messages.value.filter((message) => message.id > newestInPage);
+    messages.value = [...page.messages, ...live];
     hasMore.value = page.hasMore;
   }
 
@@ -110,6 +117,7 @@ export const useMessageStore = defineStore('messages', () => {
     const mine = message.author === auth.profile?.nickName;
     const viewing = message.channelName === openChannel;
 
+    typing.clear(message.channelName, message.author);
     if (viewing) append(message);
     if (mine) return;
 
@@ -137,12 +145,18 @@ export const useMessageStore = defineStore('messages', () => {
       onInvitation: channels.receiveInvitation,
       onChannelRemoved: channels.receiveRemoval,
       onMembersChanged: channels.receiveMembersChanged,
+      onStatus: (nickName, presence) => {
+        if (nickName === auth.profile?.nickName) auth.applyPresence(presence);
+        channels.receiveStatus(nickName, presence);
+      },
+      onTyping: typing.receive,
       onReconnect: () => void refresh(),
     });
   }
 
   function stop(): void {
     disconnectRealtime();
+    typing.reset();
     close();
   }
 
