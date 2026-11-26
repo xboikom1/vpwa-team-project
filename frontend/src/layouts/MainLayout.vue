@@ -73,7 +73,12 @@
     </q-page-container>
 
     <q-footer class="rl-footer">
-      <TypingStatus :channel-name="activeName" />
+      <div v-if="auth.presence === 'offline'" class="rl-typing" role="status">
+        <i class="rl-dot rl-dot--offline" aria-hidden="true" />
+        <span>You are offline. New messages and typing are paused.</span>
+        <button class="rl-typing__user" type="button" @click="goOnline">Go online</button>
+      </div>
+      <TypingStatus v-else :channel-name="activeName" />
       <CommandLine :channel-name="activeName" @list="membersOpen = true" />
     </q-footer>
   </q-layout>
@@ -112,6 +117,11 @@ const activeName = computed(() => {
 });
 
 const activeChannel = computed(() => channels.findChannel(activeName.value));
+
+async function goOnline(): Promise<void> {
+  const saved = await auth.setPresence('online');
+  if (!saved) $q.notify({ type: 'negative', message: 'Could not change your status.' });
+}
 
 function closeMembersOnEscape(event: KeyboardEvent): void {
   if (event.key === 'Escape' && membersOpen.value) membersOpen.value = false;
