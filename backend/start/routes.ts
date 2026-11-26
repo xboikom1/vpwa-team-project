@@ -20,6 +20,7 @@ router
         router
           .group(() => {
             router.get('me', [controllers.Profile, 'show']).as('me')
+            router.patch('me', [controllers.Profile, 'update']).as('me.update')
             router.post('logout', [controllers.AccessTokens, 'destroy']).as('logout')
           })
           .use(middleware.auth())

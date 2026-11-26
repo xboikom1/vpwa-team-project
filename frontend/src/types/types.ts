@@ -25,7 +25,16 @@ export interface AuthFailure {
   message: string;
 }
 
-export type AuthResult = { ok: true; profile: UserProfile } | { ok: false; error: AuthFailure };
+export interface UserSettings {
+  notificationFilter: NotificationFilter;
+}
+
+export interface Account {
+  profile: UserProfile;
+  settings: UserSettings;
+}
+
+export type AuthResult = ({ ok: true } & Account) | { ok: false; error: AuthFailure };
 
 export type ChannelVisibility = 'public' | 'private';
 

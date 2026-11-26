@@ -54,7 +54,7 @@ npm run dev
 
 The frontend talks to `http://localhost:3333/api/v1` by default; override it with the `API_URL` environment variable when building. The backend accepts requests from the origins listed in `CORS_ORIGIN`.
 
-Seeded login: `johndoe` / `chatflow123`.
+Seeded login: `johndoe` / `chatflow123`. `#general` is seeded with 200 messages to demonstrate the infinite scroll of the message history.
 
 ## Build and checks
 

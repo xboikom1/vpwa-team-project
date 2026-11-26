@@ -8,6 +8,7 @@ export default class NewAccountController {
     const payload = await request.validateUsing(registerValidator)
 
     const user = await User.create(payload)
+    await user.refresh()
     const token = await User.accessTokens.create(user)
 
     response.status(201)

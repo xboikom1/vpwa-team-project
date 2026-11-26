@@ -1,6 +1,8 @@
 import { ApiError, request } from '@/services/api';
 import type { Message } from '@/types/types';
 
+const MESSAGE_PAGE_SIZE = 40;
+
 export interface MessagePage {
   messages: Message[];
   hasMore: boolean;
@@ -27,9 +29,11 @@ function toMessage(message: ServerMessage): Message {
 }
 
 export async function fetchMessages(channelName: string, before?: number): Promise<MessagePage> {
-  const query = before === undefined ? '' : `?before=${before}`;
+  const query = new URLSearchParams({ limit: String(MESSAGE_PAGE_SIZE) });
+  if (before !== undefined) query.set('before', String(before));
+
   const { data, meta } = await request<{ data: ServerMessage[]; meta: { hasMore: boolean } }>(
-    `/channels/${encodeURIComponent(channelName)}/messages${query}`,
+    `/channels/${encodeURIComponent(channelName)}/messages?${query.toString()}`,
   );
 
   return { messages: data.map(toMessage), hasMore: meta.hasMore };
