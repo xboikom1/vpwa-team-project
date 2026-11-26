@@ -37,6 +37,9 @@ export const loginValidator = vine.create({
   password: vine.string().minLength(1).maxLength(128),
 })
 
+export const USER_STATUSES = ['online', 'dnd', 'offline'] as const
+
 export const updatePreferencesValidator = vine.create({
-  notifyMentionsOnly: vine.boolean(),
+  notifyMentionsOnly: vine.boolean().optional(),
+  status: vine.enum(USER_STATUSES).optional(),
 })
