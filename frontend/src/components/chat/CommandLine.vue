@@ -75,6 +75,7 @@ import { useRouter } from 'vue-router';
 
 import { useChannelStore } from '@/stores/channel-store';
 import { useMessageStore } from '@/stores/message-store';
+import { useTypingStore } from '@/stores/typing-store';
 import type { ChannelVisibility, CommandInput, JoinedChannel } from '@/types/types';
 import { COMMAND_SUGGESTIONS, parseInput } from '@/utils/commands';
 
@@ -90,6 +91,7 @@ const $q = useQuasar();
 const router = useRouter();
 const channels = useChannelStore();
 const messages = useMessageStore();
+const typing = useTypingStore();
 
 const text = ref('');
 const selectedIndex = ref(0);
@@ -132,6 +134,10 @@ watch(
     void nextTick(() => inputRef.value?.focus());
   },
 );
+
+watch([text, () => channel.value?.name ?? ''], ([draft, current]) => {
+  typing.report(current, draft);
+});
 
 function update(value: string | number | null): void {
   text.value = value === null ? '' : String(value);

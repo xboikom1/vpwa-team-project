@@ -2,19 +2,28 @@ import { Transmit } from '@adonisjs/transmit-client';
 
 import { getToken } from '@/services/api';
 import { type ServerInvitation, toInvitation } from '@/services/channel-api';
-import type { ChannelRemovalReason, Message, PendingInvitation } from '@/types/types';
+import type {
+  ChannelRemovalReason,
+  Message,
+  PendingInvitation,
+  PresenceStatus,
+} from '@/types/types';
 
 type RealtimeEvent =
   | { type: 'message.created'; message: Message }
   | { type: 'invitation.created'; invitation: ServerInvitation }
   | { type: 'channel.removed'; channelName: string; reason: ChannelRemovalReason }
-  | { type: 'members.changed'; channelName: string };
+  | { type: 'members.changed'; channelName: string }
+  | { type: 'user.status'; nickName: string; status: PresenceStatus }
+  | { type: 'typing'; channelName: string; nickName: string; text: string };
 
 export interface RealtimeHandlers {
   onMessage: (message: Message) => void;
   onInvitation: (invitation: PendingInvitation) => void;
   onChannelRemoved: (channelName: string, reason: ChannelRemovalReason) => void;
   onMembersChanged: (channelName: string) => void;
+  onStatus: (nickName: string, presence: PresenceStatus) => void;
+  onTyping: (channelName: string, nickName: string, text: string) => void;
   onReconnect: () => void;
 }
 
@@ -52,6 +61,12 @@ export function connectRealtime(nickName: string, handlers: RealtimeHandlers): v
         break;
       case 'members.changed':
         handlers.onMembersChanged(event.channelName);
+        break;
+      case 'user.status':
+        handlers.onStatus(event.nickName, event.status);
+        break;
+      case 'typing':
+        handlers.onTyping(event.channelName, event.nickName, event.text);
         break;
     }
   });

@@ -32,6 +32,7 @@ export interface UserSettings {
 export interface Account {
   profile: UserProfile;
   settings: UserSettings;
+  presence: PresenceStatus;
 }
 
 export type AuthResult = ({ ok: true } & Account) | { ok: false; error: AuthFailure };
@@ -50,6 +51,7 @@ export interface Channel {
 export interface ChannelMember {
   nickName: string;
   role: ChannelRole;
+  presence: PresenceStatus;
   joinedAt: string;
 }
 

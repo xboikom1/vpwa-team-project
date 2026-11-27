@@ -8,3 +8,7 @@ export const listMessagesValidator = vine.create({
   before: vine.number().withoutDecimals().positive().optional(),
   limit: vine.number().withoutDecimals().min(1).max(100).optional(),
 })
+
+export const typingValidator = vine.create({
+  text: vine.string().maxLength(1000).nullable().optional(),
+})

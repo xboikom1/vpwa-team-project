@@ -59,3 +59,14 @@ export async function markChannelRead(channelName: string): Promise<void> {
     return;
   }
 }
+
+export async function sendTyping(channelName: string, text: string): Promise<void> {
+  try {
+    await request(`/channels/${encodeURIComponent(channelName)}/typing`, {
+      method: 'POST',
+      body: { text },
+    });
+  } catch {
+    return;
+  }
+}

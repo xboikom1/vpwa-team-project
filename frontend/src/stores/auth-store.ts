@@ -36,13 +36,13 @@ export const useAuthStore = defineStore('auth', () => {
   function applyAccount(account: Account): void {
     profile.value = account.profile;
     notificationFilter.value = account.settings.notificationFilter;
+    presence.value = account.presence;
   }
 
   function openSession(result: AuthResult): AuthFailure | null {
     if (!result.ok) return result.error;
 
     applyAccount(result);
-    presence.value = 'online';
     return null;
   }
 
@@ -89,7 +89,19 @@ export const useAuthStore = defineStore('auth', () => {
     return restoring;
   }
 
-  function setPresence(next: PresenceStatus): void {
+
+  async function setPresence(next: PresenceStatus): Promise<boolean> {
+    if (next === presence.value) return true;
+
+    try {
+      presence.value = await authApi.updatePresence(next);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function applyPresence(next: PresenceStatus): void {
     presence.value = next;
   }
 
@@ -122,6 +134,7 @@ export const useAuthStore = defineStore('auth', () => {
     clearSession,
     restore,
     setPresence,
+    applyPresence,
     setNotificationFilter,
   };
 });

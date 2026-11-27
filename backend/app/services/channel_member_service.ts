@@ -9,6 +9,7 @@ import db from '@adonisjs/lucid/services/db'
 export type MemberPayload = {
   nickName: string
   role: 'admin' | 'member'
+  status: User['status']
   joinedAt: Date
 }
 
@@ -39,11 +40,17 @@ export default class ChannelMemberService {
       .where('channel_members.channel_id', channel.id)
       .orderByRaw('(users.id = ?) DESC', [channel.adminId])
       .orderBy('users.nick_name')
-      .select('users.id', 'users.nick_name as nickName', 'channel_members.joined_at as joinedAt')
+      .select(
+        'users.id',
+        'users.nick_name as nickName',
+        'users.status',
+        'channel_members.joined_at as joinedAt'
+      )
 
     return rows.map((row) => ({
       nickName: row.nickName,
       role: row.id === channel.adminId ? 'admin' : 'member',
+      status: row.status,
       joinedAt: row.joinedAt,
     }))
   }
