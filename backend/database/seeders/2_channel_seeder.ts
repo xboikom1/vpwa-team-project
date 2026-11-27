@@ -102,12 +102,10 @@ export default class extends BaseSeeder {
         }
       )
 
-      await channel
-        .related('members')
-        .sync(
-          Object.fromEntries(seed.members.map((nick) => [idOf(nick), { last_read_at: now }])),
-          false
-        )
+      const memberReadStates = Object.fromEntries(
+        seed.members.map((nickName) => [idOf(nickName), { last_read_at: now }])
+      )
+      await channel.related('members').sync(memberReadStates, false)
     }
 
     for (const invitation of INVITATIONS) {

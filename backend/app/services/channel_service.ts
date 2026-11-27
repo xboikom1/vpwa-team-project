@@ -68,28 +68,35 @@ export default class ChannelService {
     await this.purgeInactive()
 
     const result = await db.transaction(async (trx) => {
-      const channel = await Channel.query({ client: trx }).where('name', name).first()
-      if (!channel) {
-        return { channel: await this.createRow(trx, user, name, type), created: true, joined: true }
+      const existingChannel = await Channel.query({ client: trx }).where('name', name).first()
+
+      if (!existingChannel) {
+        const newChannel = await this.createRow(trx, user, name, type)
+        return { channel: newChannel, created: true, joined: true }
       }
 
-      if (await this.isMember(trx, channel.id, user.id)) {
+      const isAlreadyMember = await this.isMember(trx, existingChannel.id, user.id)
+
+      if (isAlreadyMember) {
         return {
-          channel: withRole(channel, this.roleOf(channel, user)),
+          channel: withRole(existingChannel, this.roleOf(existingChannel, user)),
           created: false,
           joined: false,
         }
       }
 
-      if (await this.isBanned(trx, channel.id, user.id)) throw ChannelException.banned(name)
+      const isBanned = await this.isBanned(trx, existingChannel.id, user.id)
+      if (isBanned) throw ChannelException.banned(name)
 
-      const invited = await this.hasInvitation(trx, channel.id, user.id)
-      if (!invited && channel.type === 'private') throw ChannelException.privateChannel(name)
+      const hasInvitation = await this.hasInvitation(trx, existingChannel.id, user.id)
+      if (existingChannel.type === 'private' && !hasInvitation) {
+        throw ChannelException.privateChannel(name)
+      }
 
-      await this.removeInvitation(trx, channel.id, user.id)
-      await this.addMember(trx, channel.id, user.id)
+      await this.removeInvitation(trx, existingChannel.id, user.id)
+      await this.addMember(trx, existingChannel.id, user.id)
 
-      return { channel: withRole(channel, 'member'), created: false, joined: true }
+      return { channel: withRole(existingChannel, 'member'), created: false, joined: true }
     })
 
     if (result.joined && !result.created) {
@@ -142,14 +149,18 @@ export default class ChannelService {
     await this.purgeInactive()
 
     const channel = await db.transaction(async (trx) => {
-      const found = await Channel.query({ client: trx }).where('name', name).first()
-      const invited = found ? await this.hasInvitation(trx, found.id, user.id) : false
-      if (!found || !invited) throw ChannelException.invalidInvitation(name)
-      if (await this.isBanned(trx, found.id, user.id)) throw ChannelException.banned(name)
+      const invitedChannel = await Channel.query({ client: trx }).where('name', name).first()
+      if (!invitedChannel) throw ChannelException.invalidInvitation(name)
 
-      await this.removeInvitation(trx, found.id, user.id)
-      await this.addMember(trx, found.id, user.id)
-      return found
+      const hasInvitation = await this.hasInvitation(trx, invitedChannel.id, user.id)
+      if (!hasInvitation) throw ChannelException.invalidInvitation(name)
+
+      const isBanned = await this.isBanned(trx, invitedChannel.id, user.id)
+      if (isBanned) throw ChannelException.banned(name)
+
+      await this.removeInvitation(trx, invitedChannel.id, user.id)
+      await this.addMember(trx, invitedChannel.id, user.id)
+      return invitedChannel
     })
 
     await this.realtime.publishMembersChanged(channel.id, channel.name)
@@ -210,14 +221,15 @@ export default class ChannelService {
   }
 
   private async deleteChannel(channel: Channel, actor: User) {
-    const audience = [
-      ...(await this.realtime.memberNicks(channel.id)),
-      ...(await this.realtime.inviteeNicks(channel.id)),
-    ].filter((nickName) => nickName !== actor.nickName)
+    const memberNickNames = await this.realtime.memberNickNames(channel.id)
+    const inviteeNickNames = await this.realtime.inviteeNickNames(channel.id)
+
+    const allNickNames = [...memberNickNames, ...inviteeNickNames]
+    const recipientNickNames = allNickNames.filter((nickName) => nickName !== actor.nickName)
 
     await channel.delete()
 
-    this.realtime.toUsers(audience, {
+    this.realtime.toUsers(recipientNickNames, {
       type: 'channel.removed',
       channelName: channel.name,
       reason: 'deleted',
