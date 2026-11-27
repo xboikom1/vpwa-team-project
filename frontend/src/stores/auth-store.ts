@@ -89,11 +89,7 @@ export const useAuthStore = defineStore('auth', () => {
     return restoring;
   }
 
-  /**
-   * Saves the status on the server first and only then switches it locally.
-   * This way, when coming back from `offline`, the channel refresh starts
-   * after the server already delivers messages again, so none are missed.
-   */
+
   async function setPresence(next: PresenceStatus): Promise<boolean> {
     if (next === presence.value) return true;
 
@@ -105,9 +101,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  /**
-   * Live event: the status was changed in another tab or device.
-   */
   function applyPresence(next: PresenceStatus): void {
     presence.value = next;
   }

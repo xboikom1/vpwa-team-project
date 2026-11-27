@@ -4,10 +4,8 @@ import { ref, watch } from 'vue';
 import * as messageApi from '@/services/message-api';
 import { useAuthStore } from '@/stores/auth-store';
 
-/** A typer disappears after this long without any change to their draft. */
 const IDLE_MS = 8000;
 
-/** At most one draft request per this interval, always with the latest text. */
 const SEND_INTERVAL_MS = 250;
 
 export interface Typer {
@@ -19,9 +17,6 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Commands are not messages, so they are never shown as a draft.
- */
 function toDraft(text: string): string {
   return text.trimStart().startsWith('/') ? '' : text;
 }
@@ -29,7 +24,6 @@ function toDraft(text: string): string {
 export const useTypingStore = defineStore('typing', () => {
   const auth = useAuthStore();
 
-  /** channelName -> nickName -> current draft */
   const drafts = ref<Record<string, Record<string, string>>>({});
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -61,9 +55,6 @@ export const useTypingStore = defineStore('typing', () => {
     drafts.value = {};
   }
 
-  /**
-   * Live event: someone's draft in a channel changed (empty text = stopped).
-   */
   function receive(channelName: string, nickName: string, text: string): void {
     if (nickName === auth.profile?.nickName || auth.presence === 'offline') return;
     if (text === '') {
@@ -84,11 +75,7 @@ export const useTypingStore = defineStore('typing', () => {
     );
   }
 
-  // ----- Outgoing: my own draft -----
-
-  /** Latest draft per channel that is not sent yet. */
   const outbox = new Map<string, string>();
-  /** Last draft the server got per channel. */
   const sent = new Map<string, string>();
   let draftChannel = '';
   let flushing = false;
@@ -117,10 +104,6 @@ export const useTypingStore = defineStore('typing', () => {
     void flush();
   }
 
-  /**
-   * Called on every change of the command line. Switching channels ends the
-   * draft in the previous one.
-   */
   function report(channelName: string, text: string): void {
     if (channelName !== draftChannel) {
       if (draftChannel !== '') queue(draftChannel, '');

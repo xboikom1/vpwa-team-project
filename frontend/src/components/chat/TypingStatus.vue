@@ -60,7 +60,6 @@ const typing = useTypingStore();
 const previewNick = ref('');
 const previewOpen = ref(false);
 
-// Only for the active channel, and only if the user is a member of it.
 const typers = computed(() =>
   channels.findChannel(channelName) === undefined ? [] : typing.typersIn(channelName),
 );
@@ -75,7 +74,6 @@ const previewTyper = computed(() =>
   typers.value.find((typer) => typer.nickName === previewNick.value),
 );
 
-// "@ed and @ana", "@ed, @ana and @kai", "@ed, @ana and 3 others"
 function andBefore(index: number): boolean {
   return index > 0 && index === shown.value.length - 1 && hidden.value === 0;
 }

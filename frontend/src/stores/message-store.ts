@@ -40,14 +40,11 @@ export const useMessageStore = defineStore('messages', () => {
     const newestId = messages.value.at(-1)?.id ?? 0;
     const oldestInPage = page.messages[0]?.id;
 
-    // Refresh of an already loaded list that overlaps the page: only add what is new.
     if (loaded.value && oldestInPage !== undefined && oldestInPage <= newestId) {
       messages.value.push(...page.messages.filter((message) => message.id > newestId));
       return;
     }
 
-    // First load (or a gap): take the page and keep live messages that arrived
-    // during the request and are newer than the page.
     const newestInPage = page.messages.at(-1)?.id ?? 0;
     const live = messages.value.filter((message) => message.id > newestInPage);
     messages.value = [...page.messages, ...live];

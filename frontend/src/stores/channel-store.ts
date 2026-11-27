@@ -191,16 +191,10 @@ export const useChannelStore = defineStore('channels', () => {
     });
   }
 
-  /**
-   * Live event: someone joined or left a channel the user is in.
-   */
   function receiveMembersChanged(channelName: string): void {
     if (channelName === membersOf) void refreshMembers();
   }
 
-  /**
-   * Live event: a user who shares a channel with us changed their status.
-   */
   function receiveStatus(nickName: string, presence: PresenceStatus): void {
     const member = members.value.find((item) => item.nickName === nickName);
     if (member !== undefined) member.presence = presence;

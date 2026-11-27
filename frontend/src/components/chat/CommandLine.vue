@@ -135,7 +135,6 @@ watch(
   },
 );
 
-// Live draft for "<nickName> is typing" (only in channels the user is a member of).
 watch([text, () => channel.value?.name ?? ''], ([draft, current]) => {
   typing.report(current, draft);
 });

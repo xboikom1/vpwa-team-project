@@ -8,11 +8,6 @@ export default class ProfileController {
   async show({ auth, serialize }: HttpContext) {
     return serialize(UserTransformer.transform(auth.getUserOrFail()))
   }
-
-  /**
-   * Updates the notification preference and/or the status (online, dnd, offline).
-   * A status change is pushed to everyone who shares a channel with the user.
-   */
   @inject()
   async update({ auth, request, serialize }: HttpContext, realtime: RealtimeService) {
     const user = auth.getUserOrFail()

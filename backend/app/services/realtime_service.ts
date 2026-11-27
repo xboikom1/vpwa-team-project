@@ -40,10 +40,6 @@ export function userChannel(nickName: string) {
 }
 
 export default class RealtimeService {
-  /**
-   * Nicknames of the channel members. With `reachableOnly`, members whose
-   * status is `offline` are left out (they do not receive messages).
-   */
   async memberNicks(channelId: number, reachableOnly = false): Promise<string[]> {
     const query = db
       .from('channel_members')
@@ -56,9 +52,6 @@ export default class RealtimeService {
     return rows.map((row) => row.nickName)
   }
 
-  /**
-   * Nicknames of everyone who shares at least one channel with the user.
-   */
   async contactNicks(userId: number): Promise<string[]> {
     const rows = await db
       .from('channel_members as mine')
@@ -94,18 +87,12 @@ export default class RealtimeService {
     this.toUsers(await this.memberNicks(channelId, true), { type: 'message.created', message })
   }
 
-  /**
-   * Sends a live draft to the other members who are not offline.
-   */
   async publishTyping(channelId: number, typing: TypingPayload) {
     const members = await this.memberNicks(channelId, true)
     const audience = members.filter((nickName) => nickName !== typing.nickName)
     this.toUsers(audience, { type: 'typing', ...typing })
   }
 
-  /**
-   * Tells the user's contacts (and the user's other tabs) about a status change.
-   */
   async publishStatus(user: User) {
     const audience = new Set([user.nickName, ...(await this.contactNicks(user.id))])
     this.toUsers([...audience], {
