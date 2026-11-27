@@ -1,11 +1,4 @@
 import { middleware } from '#start/kernel'
-import {
-  throttle,
-  throttleLogin,
-  throttleMessages,
-  throttleRegister,
-  throttleTyping,
-} from '#start/limiter'
 import router from '@adonisjs/core/services/router'
 import { controllers } from '#generated/controllers'
 
@@ -17,11 +10,8 @@ router
   .group(() => {
     router
       .group(() => {
-        router
-          .post('register', [controllers.NewAccount, 'store'])
-          .use(throttleRegister)
-          .as('register')
-        router.post('login', [controllers.AccessTokens, 'store']).use(throttleLogin).as('login')
+        router.post('register', [controllers.NewAccount, 'store']).as('register')
+        router.post('login', [controllers.AccessTokens, 'store']).as('login')
 
         router
           .group(() => {
@@ -46,10 +36,7 @@ router
               .delete(':name/membership', [controllers.ChannelMemberships, 'destroy'])
               .as('leave')
             router.get(':name/messages', [controllers.Messages, 'index']).as('messages.index')
-            router
-              .post(':name/messages', [controllers.Messages, 'store'])
-              .use(throttleMessages)
-              .as('messages.store')
+            router.post(':name/messages', [controllers.Messages, 'store']).as('messages.store')
             router.post(':name/read', [controllers.ChannelReads, 'store']).as('read')
             router.get(':name/members', [controllers.ChannelMembers, 'index']).as('members.index')
             router
@@ -75,9 +62,8 @@ router
       .use(middleware.auth())
   })
   .prefix('/api/v1')
-  .use(throttle)
 
 router
   .post('/api/v1/channels/:name/typing', [controllers.ChannelTyping, 'store'])
-  .use([middleware.auth(), throttleTyping])
+  .use(middleware.auth())
   .as('channels.typing')
