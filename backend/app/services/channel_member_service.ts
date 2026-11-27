@@ -27,9 +27,6 @@ export default class ChannelMemberService {
     protected realtime: RealtimeService
   ) {}
 
-  /**
-   * `/list`: members of a channel the user belongs to, admin first.
-   */
   async list(user: User, name: string): Promise<MemberPayload[]> {
     await this.channels.purgeInactive()
     const channel = await this.channels.findForMember(user, name)
@@ -55,12 +52,6 @@ export default class ChannelMemberService {
     }))
   }
 
-  /**
-   * `/invite nickName`
-   * - private channel: only the admin can invite
-   * - public channel: any member can invite
-   * - a banned user can only be let back in by the admin (this lifts the ban)
-   */
   async invite(user: User, name: string, nickName: string) {
     await this.channels.purgeInactive()
     const channel = await this.channels.findForMember(user, name)
@@ -110,10 +101,6 @@ export default class ChannelMemberService {
     return { nickName: target.nickName, restored }
   }
 
-  /**
-   * `/revoke nickName`: the admin removes a member (or a pending invitation)
-   * from a private channel.
-   */
   async revoke(user: User, name: string, nickName: string) {
     await this.channels.purgeInactive()
     const channel = await this.channels.findForMember(user, name)
@@ -146,12 +133,6 @@ export default class ChannelMemberService {
     if (wasMember) await this.realtime.publishMembersChanged(channel.id, channel.name)
   }
 
-  /**
-   * `/kick nickName`
-   * - the admin bans the member permanently, in any channel
-   * - in a public channel a member casts a vote; at 3 votes the member is banned
-   * - in a private channel only the admin can kick
-   */
   async kick(user: User, name: string, nickName: string): Promise<KickResult> {
     await this.channels.purgeInactive()
     const channel = await this.channels.findForMember(user, name)
@@ -165,7 +146,6 @@ export default class ChannelMemberService {
     const required = Channel.kickVotesToBan
 
     const result = await db.transaction(async (trx) => {
-      // Lock the target's membership row so concurrent votes are counted one by one.
       const membership = await trx
         .from('channel_members')
         .where({ channel_id: channel.id, user_id: target.id })

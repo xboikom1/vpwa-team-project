@@ -10,9 +10,6 @@ import { DateTime } from 'luxon'
 type ChannelType = Channel['type']
 type Role = 'admin' | 'member'
 
-/**
- * Anything that can start a query: the global `db` service or a transaction.
- */
 export type QueryClient = Pick<TransactionClientContract, 'from' | 'table'>
 
 export interface PendingInvitation {
@@ -212,10 +209,6 @@ export default class ChannelService {
     return channel.adminId === user.id ? 'admin' : 'member'
   }
 
-  /**
-   * Deletes the channel and tells everyone who had it in their list
-   * (members and pending invitees), except the user who deleted it.
-   */
   private async deleteChannel(channel: Channel, actor: User) {
     const audience = [
       ...(await this.realtime.memberNicks(channel.id)),
