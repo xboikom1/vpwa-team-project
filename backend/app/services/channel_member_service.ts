@@ -27,9 +27,6 @@ export default class ChannelMemberService {
     protected realtime: RealtimeService
   ) {}
 
-  /**
-   * `/list`: members of a channel the user belongs to, admin first.
-   */
   async list(user: User, name: string): Promise<MemberPayload[]> {
     await this.channels.purgeInactive()
     const channel = await this.channels.findForMember(user, name)
@@ -55,12 +52,6 @@ export default class ChannelMemberService {
     }))
   }
 
-  /**
-   * `/invite nickName`
-   * - private channel: only the admin can invite
-   * - public channel: any member can invite
-   * - a banned user can only be let back in by the admin (this lifts the ban)
-   */
   async invite(user: User, name: string, nickName: string) {
     await this.channels.purgeInactive()
     const channel = await this.channels.findForMember(user, name)
@@ -71,7 +62,7 @@ export default class ChannelMemberService {
     const target = await this.findUser(nickName)
     const createdAt = new Date()
 
-    const restored = await db.transaction(async (trx) => {
+    const banWasLifted = await db.transaction(async (trx) => {
       if (await this.channels.isMember(trx, channel.id, target.id)) {
         throw ChannelException.alreadyMember(target.nickName, channel.name)
       }
@@ -79,9 +70,11 @@ export default class ChannelMemberService {
         throw ChannelException.alreadyInvited(target.nickName, channel.name)
       }
 
-      const banned = await this.channels.isBanned(trx, channel.id, target.id)
-      if (banned && !isAdmin) throw ChannelException.targetBanned(target.nickName, channel.name)
-      if (banned) await this.unban(trx, channel.id, target.id)
+      const wasBanned = await this.channels.isBanned(trx, channel.id, target.id)
+      if (wasBanned && !isAdmin) {
+        throw ChannelException.targetBanned(target.nickName, channel.name)
+      }
+      if (wasBanned) await this.unban(trx, channel.id, target.id)
 
       await trx
         .table('channel_invitations')
@@ -94,7 +87,7 @@ export default class ChannelMemberService {
         .onConflict(['channel_id', 'user_id'])
         .ignore()
 
-      return banned
+      return wasBanned
     })
 
     this.realtime.toUsers([target.nickName], {
@@ -107,13 +100,9 @@ export default class ChannelMemberService {
       },
     })
 
-    return { nickName: target.nickName, restored }
+    return { nickName: target.nickName, restored: banWasLifted }
   }
 
-  /**
-   * `/revoke nickName`: the admin removes a member (or a pending invitation)
-   * from a private channel.
-   */
   async revoke(user: User, name: string, nickName: string) {
     await this.channels.purgeInactive()
     const channel = await this.channels.findForMember(user, name)
@@ -146,12 +135,6 @@ export default class ChannelMemberService {
     if (wasMember) await this.realtime.publishMembersChanged(channel.id, channel.name)
   }
 
-  /**
-   * `/kick nickName`
-   * - the admin bans the member permanently, in any channel
-   * - in a public channel a member casts a vote; at 3 votes the member is banned
-   * - in a private channel only the admin can kick
-   */
   async kick(user: User, name: string, nickName: string): Promise<KickResult> {
     await this.channels.purgeInactive()
     const channel = await this.channels.findForMember(user, name)
@@ -165,7 +148,6 @@ export default class ChannelMemberService {
     const required = Channel.kickVotesToBan
 
     const result = await db.transaction(async (trx) => {
-      // Lock the target's membership row so concurrent votes are counted one by one.
       const membership = await trx
         .from('channel_members')
         .where({ channel_id: channel.id, user_id: target.id })
@@ -178,7 +160,7 @@ export default class ChannelMemberService {
         return { votes: required, banned: true }
       }
 
-      const inserted = await trx
+      const insertedVote = await trx
         .table('channel_kick_votes')
         .insert({
           channel_id: channel.id,
@@ -191,11 +173,14 @@ export default class ChannelMemberService {
         .returning('voter_id')
 
       const votes = await this.countVotes(trx, channel.id, target.id)
-      if (inserted.length === 0)
+      if (insertedVote.length === 0) {
         throw ChannelException.alreadyVoted(target.nickName, votes, required)
+      }
 
-      if (votes >= required) await this.ban(trx, channel.id, target.id)
-      return { votes, banned: votes >= required }
+      const reachedVoteThreshold = votes >= required
+      if (reachedVoteThreshold) await this.ban(trx, channel.id, target.id)
+
+      return { votes, banned: reachedVoteThreshold }
     })
 
     if (result.banned) {

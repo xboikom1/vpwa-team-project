@@ -18,6 +18,4 @@ export default await Env.create(new URL('../', import.meta.url), {
   DB_DATABASE: Env.schema.string(),
 
   CORS_ORIGIN: Env.schema.string.optional(),
-
-  LIMITER_STORE: Env.schema.enum(['database', 'memory'] as const),
 })

@@ -156,9 +156,6 @@ export const useChannelStore = defineStore('channels', () => {
     return runRemote(() => channelApi.declineInvitation(channelName));
   }
 
-  /**
-   * Live event: someone invited the user. The invite is pinned to the top of the list.
-   */
   function receiveInvitation(invitation: PendingInvitation): void {
     invitations.value = [
       invitation,
@@ -171,9 +168,6 @@ export const useChannelStore = defineStore('channels', () => {
     });
   }
 
-  /**
-   * Live event: the user lost access to a channel (deleted, revoked or banned).
-   */
   function receiveRemoval(channelName: string, reason: ChannelRemovalReason): void {
     const wasMember = findChannel(channelName) !== undefined;
     const wasInvited = invitations.value.some((item) => item.channelName === channelName);

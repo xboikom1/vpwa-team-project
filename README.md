@@ -7,7 +7,7 @@ Authentication, the channel list (create, join, leave, delete, invitations, 30-d
 ## Stack and libraries
 
 - Vue and TypeScript
-- AdonisJS, Lucid ORM, VineJS validation, access-token auth, rate limiting, and Transmit (server-sent events) for live messages (`backend`)
+- AdonisJS, Lucid ORM, VineJS validation, access-token auth, and Transmit (server-sent events) for live messages (`backend`)
 - PostgreSQL
 - Quasar for UI components, dialogs, and notifications
 - Pinia for state management

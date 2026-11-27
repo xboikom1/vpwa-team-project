@@ -61,10 +61,6 @@ function toFailure(error: unknown, invalidCredentialsMessage?: string): AuthFail
     if (item?.field !== undefined) return { field: item.field as AuthField, message: item.message };
   }
 
-  if (error.status === 429) {
-    return { field: 'form', message: 'Too many attempts. Wait a moment and try again.' };
-  }
-
   if (error.status === 400 && invalidCredentialsMessage !== undefined) {
     return { field: 'form', message: invalidCredentialsMessage };
   }

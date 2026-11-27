@@ -4,9 +4,6 @@ import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 
 export default class ChannelKicksController {
-  /**
-   * `/kick nickName`
-   */
   @inject()
   async store({ auth, params, request }: HttpContext, members: ChannelMemberService) {
     const { nickName } = await request.validateUsing(nickNameValidator)

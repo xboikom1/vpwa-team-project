@@ -13,7 +13,10 @@ export default class ProfileController {
     const user = auth.getUserOrFail()
     const { notifyMentionsOnly, status } = await request.validateUsing(updatePreferencesValidator)
 
-    if (notifyMentionsOnly !== undefined) user.notifyMentionsOnly = notifyMentionsOnly
+    if (notifyMentionsOnly !== undefined) {
+      user.notifyMentionsOnly = notifyMentionsOnly
+    }
+
     const statusChanged = status !== undefined && status !== user.status
     if (status !== undefined) user.status = status
     await user.save()
